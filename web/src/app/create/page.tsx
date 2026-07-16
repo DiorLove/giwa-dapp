@@ -3,9 +3,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePublicClient, useWriteContract } from "wagmi";
 import { parseUnits, decodeEventLog } from "viem";
-import { FACTORY_ADDRESS, factoryAbi } from "@/lib/contracts";
+import { FACTORY_ADDRESS, errMsg, factoryAbi } from "@/lib/contracts";
 import { AppNav } from "@/components/AppNav";
 import { Dropdown } from "@/components/Dropdown";
+import { FadeUp } from "@/components/Motion";
 
 const ROUND_OPTIONS = [
   { label: "10분", value: 600, hint: "데모용" },
@@ -61,7 +62,7 @@ export default function CreatePage() {
       }
       router.push("/app");
     } catch (e) {
-      setError(e instanceof Error ? e.message.split("\n")[0] : "트랜잭션 실패");
+      setError(errMsg(e));
     } finally {
       setBusy(false);
     }
@@ -78,16 +79,16 @@ export default function CreatePage() {
       <AppNav />
 
       <main className="mx-auto max-w-6xl px-6 pb-24">
-        <div className="pt-12 pb-10">
+        <FadeUp className="pt-12 pb-10">
           <p className="mb-2 text-xs uppercase tracking-[0.2em] text-white/35">New</p>
           <h1 className="font-display text-4xl tracking-tight text-white md:text-5xl">
             새 계모임 개설
           </h1>
-        </div>
+        </FadeUp>
 
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_380px]">
           {/* Form */}
-          <div className="flex flex-col gap-8">
+          <FadeUp delay={0.08} className="flex flex-col gap-8">
             <div className="flex flex-col gap-4">
               <div className="flex items-baseline justify-between">
                 <span className={label}>인원</span>
@@ -166,10 +167,13 @@ export default function CreatePage() {
                 {error}
               </p>
             )}
-          </div>
+          </FadeUp>
 
           {/* Summary panel */}
-          <aside className="h-fit rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8 lg:sticky lg:top-24">
+          <FadeUp
+            delay={0.16}
+            className="h-fit rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8 lg:sticky lg:top-24"
+          >
             <p className={label}>요약</p>
             <dl className="mt-6 flex flex-col gap-4 border-b border-white/[0.06] pb-6">
               <div className="flex items-baseline justify-between">
@@ -200,7 +204,7 @@ export default function CreatePage() {
               개설 후에도 계주는 자금에 접근할 수 없습니다. 모든 보관과 지급은
               스마트 컨트랙트가 수행합니다.
             </p>
-          </aside>
+          </FadeUp>
         </div>
       </main>
     </div>

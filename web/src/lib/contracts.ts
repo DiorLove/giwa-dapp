@@ -57,3 +57,23 @@ export const shortAddr = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 export const explorerUrl = (path: string) =>
   `https://sepolia-explorer.giwa.io/${path}`;
+
+/** viem/wagmi 에러에서 사람이 읽을 사유를 추출 */
+export function errMsg(e: unknown): string {
+  if (e && typeof e === "object") {
+    const err = e as {
+      shortMessage?: string;
+      message?: string;
+      cause?: { reason?: string; shortMessage?: string };
+    };
+    if (err.cause?.reason) return err.cause.reason;
+    if (err.shortMessage) {
+      const extra = err.cause?.shortMessage;
+      return extra && extra !== err.shortMessage
+        ? `${err.shortMessage} — ${extra}`
+        : err.shortMessage;
+    }
+    if (err.message) return err.message.split("\n").slice(0, 5).join(" ");
+  }
+  return "트랜잭션 실패";
+}

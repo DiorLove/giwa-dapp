@@ -1,0 +1,66 @@
+"use client";
+import { useEffect } from "react";
+import { motion, useSpring, useTransform } from "framer-motion";
+
+export const EASE = [0.23, 1, 0.32, 1] as const;
+
+/** 마운트 시 아래에서 떠오르는 래퍼 — 페이지 섹션 스태거용 */
+export function FadeUp({
+  children,
+  delay = 0,
+  className,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.55, delay, ease: EASE }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/** 값이 바뀔 때 스프링으로 굴러가는 숫자 */
+export function AnimatedNumber({
+  value,
+  format = (n) => n.toLocaleString("ko-KR"),
+}: {
+  value: number;
+  format?: (n: number) => string;
+}) {
+  const spring = useSpring(value, { stiffness: 90, damping: 24 });
+  const display = useTransform(spring, (v) => format(Math.round(v)));
+  useEffect(() => {
+    spring.set(value);
+  }, [value, spring]);
+  return <motion.span>{display}</motion.span>;
+}
+
+/** 상태 전환 시 부드럽게 교체되는 블록 (액션 패널용) */
+export function SwapIn({
+  id,
+  children,
+  className,
+}: {
+  id: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      key={id}
+      initial={{ opacity: 0, y: 10, filter: "blur(3px)" }}
+      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      transition={{ duration: 0.35, ease: EASE }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}

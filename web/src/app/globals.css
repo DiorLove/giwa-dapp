@@ -84,6 +84,27 @@ body {
   animation: rise-in 300ms var(--ease-out-strong) forwards;
 }
 
+/* ---- 스켈레톤 시머 ---- */
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+.skeleton {
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.09) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
 /* ---- 커스텀 폼 컨트롤 ---- */
 .range-input {
   -webkit-appearance: none;

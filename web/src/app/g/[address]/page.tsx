@@ -5,6 +5,7 @@ import { maxUint256 } from "viem";
 import { ArrowUpRight, Check, Copy } from "lucide-react";
 import {
   MOCKKRW_ADDRESS,
+  errMsg,
   explorerUrl,
   fmtKRW,
   mockKrwAbi,
@@ -13,6 +14,8 @@ import {
 } from "@/lib/contracts";
 import { AppNav } from "@/components/AppNav";
 import { MulleWheel } from "@/components/MulleWheel";
+import { FadeUp, SwapIn } from "@/components/Motion";
+import { giwaSepolia } from "@/lib/chain";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
 const STATE_LABEL = ["모집 중", "진행 중", "완주", "종료"];
@@ -26,7 +29,7 @@ const STATE_CLS = [
 export default function KyePage({ params }: { params: Promise<{ address: string }> }) {
   const { address: kyeAddr } = use(params);
   const kye = kyeAddr as `0x${string}`;
-  const { address: me } = useAccount();
+  const { address: me, chainId } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const [busy, setBusy] = useState<string | null>(null);
@@ -89,7 +92,7 @@ export default function KyePage({ params }: { params: Promise<{ address: string 
       await refetch();
       await paidQuery.refetch();
     } catch (e) {
-      setError(e instanceof Error ? e.message.split("\n")[0] : "트랜잭션 실패");
+      setError(errMsg(e));
     } finally {
       setBusy(null);
     }
@@ -120,8 +123,18 @@ export default function KyePage({ params }: { params: Promise<{ address: string 
     return (
       <div className="min-h-screen bg-black">
         <AppNav />
-        <main className="flex h-[60vh] items-center justify-center text-sm text-white/30">
-          불러오는 중
+        <main className="mx-auto max-w-6xl px-6">
+          <div className="pt-12 pb-10">
+            <div className="skeleton mb-3 h-4 w-24" />
+            <div className="skeleton h-12 w-72" />
+          </div>
+          <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_400px]">
+            <div className="flex flex-col gap-6">
+              <div className="skeleton h-28 w-full" />
+              <div className="skeleton h-72 w-full" />
+            </div>
+            <div className="skeleton h-56 w-full" />
+          </div>
         </main>
       </div>
     );
@@ -147,7 +160,7 @@ export default function KyePage({ params }: { params: Promise<{ address: string 
 
       <main className="mx-auto max-w-6xl px-6 pb-24">
         {/* Page head */}
-        <div className="flex flex-col gap-4 pt-12 pb-10 md:flex-row md:items-end md:justify-between">
+        <FadeUp className="flex flex-col gap-4 pt-12 pb-10 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="mb-2 flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-white/35">
               계 상세
@@ -169,11 +182,11 @@ export default function KyePage({ params }: { params: Promise<{ address: string 
             <span className="font-mono">{shortAddr(kye)}</span>
             <ArrowUpRight size={14} />
           </a>
-        </div>
+        </FadeUp>
 
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_400px]">
           {/* Left: overview */}
-          <div className="flex flex-col gap-10">
+          <FadeUp delay={0.08} className="flex flex-col gap-10">
             <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.06] sm:grid-cols-4">
               {[
                 { k: "인원", v: `${members.length} / ${maxMembers}` },
@@ -233,11 +246,24 @@ export default function KyePage({ params }: { params: Promise<{ address: string 
                 ))}
               </div>
             </section>
-          </div>
+          </FadeUp>
 
           {/* Right: actions */}
-          <aside className="flex h-fit flex-col gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8 lg:sticky lg:top-24">
-            <p className={label}>액션</p>
+          <FadeUp
+            delay={0.16}
+            className="flex h-fit flex-col rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8 lg:sticky lg:top-24"
+          >
+            <p className={`${label} mb-4`}>액션</p>
+            <SwapIn
+              id={`${state}-${isMember}-${full}-${orderProposed}-${iApproved}-${roundEnded}-${iPaid}-${claimable > 0n}-${chainId}`}
+              className="flex flex-col gap-4"
+            >
+            {me && chainId !== giwaSepolia.id && (
+              <p className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 text-center text-sm text-amber-300">
+                지갑이 다른 네트워크에 연결되어 있습니다. 상단에서 GIWA
+                Sepolia로 전환해 주세요.
+              </p>
+            )}
 
             {state === 0 && !me && (
               <p className="rounded-xl border border-dashed border-white/15 p-5 text-center text-sm text-white/40">
@@ -387,11 +413,12 @@ export default function KyePage({ params }: { params: Promise<{ address: string 
             )}
 
             {error && (
-              <p className="rounded-xl border border-red-400/20 bg-red-400/5 p-4 text-xs text-red-300">
+              <p className="rounded-xl border border-red-400/20 bg-red-400/5 p-4 text-xs leading-relaxed break-words text-red-300">
                 {error}
               </p>
             )}
-          </aside>
+            </SwapIn>
+          </FadeUp>
         </div>
       </main>
     </div>

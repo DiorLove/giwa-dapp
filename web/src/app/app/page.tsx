@@ -12,6 +12,7 @@ import {
   shortAddr,
 } from "@/lib/contracts";
 import { AppNav } from "@/components/AppNav";
+import { AnimatedNumber, FadeUp } from "@/components/Motion";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
@@ -62,7 +63,7 @@ export default function AppHome() {
 
       <main className="mx-auto max-w-6xl px-6 pb-24">
         {/* Page head */}
-        <div className="flex flex-col gap-6 pt-12 pb-10 md:flex-row md:items-end md:justify-between">
+        <FadeUp className="flex flex-col gap-6 pt-12 pb-10 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="mb-2 text-xs uppercase tracking-[0.2em] text-white/35">Dashboard</p>
             <h1 className="font-display text-4xl tracking-tight text-white md:text-5xl">
@@ -76,26 +77,38 @@ export default function AppHome() {
             <Plus size={16} />
             새 계모임 개설
           </Link>
-        </div>
+        </FadeUp>
 
         {/* Stats strip */}
-        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.06] sm:grid-cols-3">
-          <div className="bg-black p-6">
+        <FadeUp
+          delay={0.08}
+          className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.06] sm:grid-cols-3"
+        >
+          <div className="bg-black p-6 transition-colors hover:bg-white/[0.02]">
             <p className="text-xs uppercase tracking-[0.15em] text-white/35">전체 계</p>
-            <p className="mt-2 text-3xl font-medium text-white tabular-nums">{mulles.length}</p>
-          </div>
-          <div className="bg-black p-6">
-            <p className="text-xs uppercase tracking-[0.15em] text-white/35">내 참여</p>
             <p className="mt-2 text-3xl font-medium text-white tabular-nums">
-              {address ? myCount : "—"}
+              <AnimatedNumber value={mulles.length} />
             </p>
           </div>
-          <div className="bg-black p-6">
+          <div className="bg-black p-6 transition-colors hover:bg-white/[0.02]">
+            <p className="text-xs uppercase tracking-[0.15em] text-white/35">내 참여</p>
+            <p className="mt-2 text-3xl font-medium text-white tabular-nums">
+              {address ? <AnimatedNumber value={myCount} /> : "—"}
+            </p>
+          </div>
+          <div className="bg-black p-6 transition-colors hover:bg-white/[0.02]">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.15em] text-white/35">mKRW 잔액</p>
                 <p className="mt-2 text-3xl font-medium text-white tabular-nums">
-                  {address ? fmtKRW(balance ?? 0n) : "—"}
+                  {address ? (
+                    <AnimatedNumber
+                      value={Number((balance ?? 0n) / 10n ** 18n)}
+                      format={(n) => "₩" + n.toLocaleString("ko-KR")}
+                    />
+                  ) : (
+                    "—"
+                  )}
                 </p>
               </div>
               {address && (
@@ -114,10 +127,10 @@ export default function AppHome() {
               )}
             </div>
           </div>
-        </div>
+        </FadeUp>
 
         {/* Kye table */}
-        <section className="mt-14">
+        <FadeUp delay={0.16} className="mt-14">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm uppercase tracking-[0.15em] text-white/35">전체 계 목록</h2>
           </div>
@@ -179,7 +192,7 @@ export default function AppHome() {
               );
             })}
           </div>
-        </section>
+        </FadeUp>
 
         <p className="mt-12 text-xs leading-relaxed text-white/25">
           GIWA Sepolia 테스트넷에서 동작하는 데모입니다. 납입 통화는 모의
