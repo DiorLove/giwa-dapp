@@ -5,12 +5,19 @@ import { usePublicClient, useWriteContract } from "wagmi";
 import { parseUnits, decodeEventLog } from "viem";
 import { FACTORY_ADDRESS, factoryAbi } from "@/lib/contracts";
 import { AppNav } from "@/components/AppNav";
+import { Dropdown } from "@/components/Dropdown";
 
 const ROUND_OPTIONS = [
-  { label: "10분 — 데모용", value: 600 },
+  { label: "10분", value: 600, hint: "데모용" },
   { label: "1일", value: 86400 },
   { label: "1주", value: 604800 },
-  { label: "1개월 (30일)", value: 2592000 },
+  { label: "1개월", value: 2592000, hint: "30일" },
+];
+
+const DEPOSIT_OPTIONS = [
+  { label: "없음", value: 0, hint: "믿는 지인끼리" },
+  { label: "납입액 1회분", value: 1 },
+  { label: "납입액 2회분", value: 2 },
 ];
 
 export default function CreatePage() {
@@ -81,52 +88,53 @@ export default function CreatePage() {
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_380px]">
           {/* Form */}
           <div className="flex flex-col gap-8">
-            <div className="flex flex-col gap-3">
-              <span className={label}>인원 · {members}명</span>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-baseline justify-between">
+                <span className={label}>인원</span>
+                <span className="text-sm text-white tabular-nums">
+                  {members}
+                  <span className="text-white/35">명</span>
+                </span>
+              </div>
               <input
                 type="range" min={3} max={12} value={members}
                 onChange={(e) => setMembers(Number(e.target.value))}
-                className="accent-white"
+                className="range-input"
+                style={{ "--fill": `${((members - 3) / 9) * 100}%` } as React.CSSProperties}
               />
-              <span className="text-xs text-white/30">
-                {members}회차 동안 매 회차 한 명씩 곗돈을 받습니다
-              </span>
+              <div className="flex justify-between text-[11px] text-white/25 tabular-nums">
+                <span>3</span>
+                <span>{members}회차 동안 매 회차 한 명씩 곗돈을 받습니다</span>
+                <span>12</span>
+              </div>
             </div>
 
             <div className="flex flex-col gap-3">
-              <span className={label}>회당 납입액 (mKRW)</span>
-              <input
-                type="number" inputMode="numeric" value={amount}
-                onChange={(e) => setAmount(e.target.value)} className={input}
-              />
+              <span className={label}>회당 납입액</span>
+              <div className="relative">
+                <input
+                  type="number" inputMode="numeric" value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className={`${input} pr-16`}
+                />
+                <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-xs text-white/35">
+                  mKRW
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div className="flex flex-col gap-3">
                 <span className={label}>납입 주기</span>
-                <select
-                  value={round}
-                  onChange={(e) => setRound(Number(e.target.value))}
-                  className={input}
-                >
-                  {ROUND_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value} className="bg-neutral-900">
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                <Dropdown value={round} options={ROUND_OPTIONS} onChange={setRound} />
               </div>
               <div className="flex flex-col gap-3">
                 <span className={label}>보증금</span>
-                <select
+                <Dropdown
                   value={depositRounds}
-                  onChange={(e) => setDepositRounds(Number(e.target.value))}
-                  className={input}
-                >
-                  <option value={0} className="bg-neutral-900">없음</option>
-                  <option value={1} className="bg-neutral-900">납입액 1회분</option>
-                  <option value={2} className="bg-neutral-900">납입액 2회분</option>
-                </select>
+                  options={DEPOSIT_OPTIONS}
+                  onChange={setDepositRounds}
+                />
               </div>
             </div>
 

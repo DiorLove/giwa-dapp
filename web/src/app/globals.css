@@ -84,6 +84,80 @@ body {
   animation: rise-in 300ms var(--ease-out-strong) forwards;
 }
 
+/* ---- 커스텀 폼 컨트롤 ---- */
+.range-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 2px;
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+  /* 채움은 인라인 style의 --fill 값으로 */
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.9) var(--fill, 0%),
+    rgba(255, 255, 255, 0.12) var(--fill, 0%)
+  );
+}
+.range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #000;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.15);
+  transition:
+    box-shadow 200ms var(--ease-out-strong),
+    transform 200ms var(--ease-out-strong);
+}
+.range-input::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08);
+}
+.range-input:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.1);
+}
+.range-input::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #000;
+  border: 2px solid #fff;
+}
+.range-input::-moz-range-track {
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.range-input::-moz-range-progress {
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.select-input {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 44px;
+}
+
+/* number input 스피너 제거 */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* ---- 마퀴 (무한 스크롤 스트립) ---- */
 @keyframes marquee-x {
   from {
