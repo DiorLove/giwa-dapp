@@ -279,4 +279,106 @@ contract MulleTest is Test {
         assertTrue(mulle.hasReceived(m2));
         assertTrue(mulle.hasReceived(m3));
     }
+
+    // ---- Task 6: 슬래싱 & 파탄 ----
+
+    function test_MissedPaymentSlashedFromDeposit() public {
+        _startRandom();
+        vm.prank(org); mulle.pay();
+        vm.prank(m2); mulle.pay();
+        // m3 미납 (보증금 1회분 있음)
+        vm.warp(mulle.roundEnd(0));
+        mulle.settle();
+
+        assertEq(uint8(mulle.state()), uint8(Mulle.State.Active)); // 계 지속
+        assertEq(mulle.depositBalance(m3), 0);                     // 보증금 차감
+        assertEq(mulle.totalPaid(m3), CONTRIBUTION);               // 차감분 납입 인정
+        assertEq(mulle.currentRound(), 1);
+    }
+
+    function test_BreaksWhenDepositExhausted() public {
+        _startRandom();
+        // 1회차: m3 미납 → 보증금 소진
+        vm.prank(org); mulle.pay();
+        vm.prank(m2); mulle.pay();
+        vm.warp(mulle.roundEnd(0));
+        mulle.settle();
+        // 2회차: m3 또 미납 → 보증금 없음 → 파탄
+        vm.prank(org); mulle.pay();
+        vm.prank(m2); mulle.pay();
+        vm.warp(mulle.roundEnd(1));
+        mulle.settle();
+
+        assertEq(uint8(mulle.state()), uint8(Mulle.State.Broken));
+    }
+
+    function test_LiquidationAccountingIsSound() public {
+        _startRandom();
+        address first = mulle.getPayoutOrder()[0];
+        address[3] memory all = [org, m2, m3];
+
+        // 1회차 정상 완료 → first 수령
+        _payAll();
+        vm.warp(mulle.roundEnd(0));
+        mulle.settle();
+
+        // 2회차: first 납입 중단 → 보증금 1회분 차감으로 버팀
+        for (uint256 i = 0; i < 3; i++) {
+            if (all[i] != first) {
+                vm.prank(all[i]);
+                mulle.pay();
+            }
+        }
+        vm.warp(mulle.roundEnd(1));
+        mulle.settle();
+
+        // 3회차: first 또 미납 → 보증금 없음 → 파탄
+        for (uint256 i = 0; i < 3; i++) {
+            if (all[i] != first) {
+                vm.prank(all[i]);
+                mulle.pay();
+            }
+        }
+        vm.warp(mulle.roundEnd(2));
+        mulle.settle();
+        assertEq(uint8(mulle.state()), uint8(Mulle.State.Broken));
+
+        // 회계 무결성: 컨트랙트 잔액 == totalClaimable ± 반올림 dust
+        uint256 dust = krw.balanceOf(address(mulle)) - mulle.totalClaimable();
+        assertLt(dust, 10); // wei 단위 dust만 허용
+
+        // 전원 claim 가능해야 함 (revert 없이)
+        for (uint256 i = 0; i < 3; i++) {
+            if (mulle.claimable(all[i]) > 0) {
+                vm.prank(all[i]);
+                mulle.claim();
+            }
+        }
+    }
+
+    function test_NoDepositKyeBreaksOnFirstMiss() public {
+        // 보증금 0인 계는 첫 미납에 바로 파탄
+        Mulle z = new Mulle(
+            IERC20(address(krw)), org, MEMBERS, CONTRIBUTION,
+            ROUND, 0, RECRUIT_PERIOD, Mulle.OrderMode.Random
+        );
+        address[3] memory all = [org, m2, m3];
+        for (uint256 i = 0; i < 3; i++) {
+            vm.startPrank(all[i]);
+            krw.approve(address(z), type(uint256).max);
+            z.join();
+            vm.stopPrank();
+        }
+        vm.roll(block.number + 10);
+        z.start();
+        vm.prank(org); z.pay();
+        vm.prank(m2); z.pay();
+        vm.warp(z.roundEnd(0));
+        z.settle();
+        assertEq(uint8(z.state()), uint8(Mulle.State.Broken));
+        // 납입자들은 납입액 비례로 환급
+        assertGt(z.claimable(org), 0);
+        assertGt(z.claimable(m2), 0);
+        assertEq(z.claimable(m3), 0);
+    }
 }
