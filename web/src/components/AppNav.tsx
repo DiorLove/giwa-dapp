@@ -36,7 +36,7 @@ export function AppNav() {
               </Link>
             ))}
             <a
-              href="https://sepolia-explorer.giwa.io/address/0xD37eD0FBEeD8BC364982F2E60B90B48D8067DE08"
+              href="https://sepolia-explorer.giwa.io/address/0x5622e3B98c04507E2185667131C75344Fe077012"
               target="_blank"
               rel="noreferrer"
               className="text-sm text-white/60 transition-colors hover:text-white"

@@ -8,6 +8,8 @@ import {JeonseEscrow} from "./JeonseEscrow.sol";
 contract JeonseFactory {
     IERC20 public immutable token;
     address public immutable bridgePool;
+    address public immutable treasury;
+    uint256 public immutable settleFeeBps;
     address[] public allEscrows;
 
     event EscrowCreated(
@@ -17,9 +19,11 @@ contract JeonseFactory {
         address tenantOut
     );
 
-    constructor(IERC20 _token, address _bridgePool) {
+    constructor(IERC20 _token, address _bridgePool, address _treasury, uint256 _settleFeeBps) {
         token = _token;
         bridgePool = _bridgePool;
+        treasury = _treasury;
+        settleFeeBps = _settleFeeBps;
     }
 
     function createEscrow(
@@ -31,7 +35,7 @@ contract JeonseFactory {
     ) external returns (address) {
         JeonseEscrow esc = new JeonseEscrow(
             token, bridgePool, msg.sender, tenantIn, tenantOut,
-            jeonseAmount, refundAmount, settleDate
+            jeonseAmount, refundAmount, settleDate, treasury, settleFeeBps
         );
         allEscrows.push(address(esc));
         emit EscrowCreated(address(esc), msg.sender, tenantIn, tenantOut);

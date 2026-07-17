@@ -25,6 +25,8 @@ contract JeonseEscrow {
     uint256 public immutable jeonseAmount; // B가 락하는 신규 전세금
     uint256 public immutable refundAmount; // A가 돌려받을 기존 보증금
     uint256 public immutable settleDate;
+    address public immutable treasury;      // 프로토콜 수수료 수취처
+    uint256 public immutable settleFeeBps;  // 정산 수수료 (전세금 대비 bps, 집주인 차액에서만 차감)
 
     State public state;
     bool public bridged; // A가 브리지 풀에서 선지급을 받았는가
@@ -62,11 +64,14 @@ contract JeonseEscrow {
         address _tenantOut,
         uint256 _jeonseAmount,
         uint256 _refundAmount,
-        uint256 _settleDate
+        uint256 _settleDate,
+        address _treasury,
+        uint256 _settleFeeBps
     ) {
         require(_refundAmount <= _jeonseAmount, "refund > jeonse");
         require(_jeonseAmount > 0, "jeonse=0");
         require(_settleDate > block.timestamp, "settle in past");
+        require(_settleFeeBps <= 100, "fee too high"); // 최대 1%
         require(
             _landlord != address(0) && _tenantIn != address(0) && _tenantOut != address(0),
             "zero party"
@@ -79,6 +84,8 @@ contract JeonseEscrow {
         jeonseAmount = _jeonseAmount;
         refundAmount = _refundAmount;
         settleDate = _settleDate;
+        treasury = _treasury;
+        settleFeeBps = _settleFeeBps;
     }
 
     /// B: 전세금 락 — 이 순간부터 "돈이 준비되어 있음"이 온체인 사실이 된다
@@ -117,6 +124,13 @@ contract JeonseEscrow {
         state = State.Settled;
 
         uint256 toLandlord = jeonseAmount - refundAmount;
+        // 프로토콜 정산 수수료: 집주인 차액에서만 차감 (반환 보증금은 건드리지 않음)
+        uint256 fee = (jeonseAmount * settleFeeBps) / 10000;
+        if (fee > toLandlord) fee = toLandlord;
+        if (fee > 0) {
+            toLandlord -= fee;
+            token.safeTransfer(treasury, fee);
+        }
         if (toLandlord > 0) {
             claimable[landlord] += toLandlord;
         }

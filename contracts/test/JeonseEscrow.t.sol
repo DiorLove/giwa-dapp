@@ -20,10 +20,12 @@ contract JeonseEscrowTest is Test {
     uint256 constant JEONSE = 300_000_000e18;  // ₩3억
     uint256 constant REFUND = 280_000_000e18;  // ₩2.8억 (구 전세금)
     uint256 constant SETTLE_DELAY = 7 days;
+    address constant TREASURY = address(0xFEE);
+    uint256 constant POOL_CUT_BPS = 2000; // 브리지 수수료의 20%
 
     function setUp() public {
         krw = new MockKRW();
-        pool = new BridgePool(IERC20(address(krw)));
+        pool = new BridgePool(IERC20(address(krw)), TREASURY, POOL_CUT_BPS);
         esc = new JeonseEscrow(
             IERC20(address(krw)),
             address(pool),
@@ -32,7 +34,9 @@ contract JeonseEscrowTest is Test {
             tenantOut,
             JEONSE,
             REFUND,
-            block.timestamp + SETTLE_DELAY
+            block.timestamp + SETTLE_DELAY,
+            TREASURY,
+            0
         );
 
         // B에게 전세금 마련 (파우셋 여러 번)
@@ -54,7 +58,7 @@ contract JeonseEscrowTest is Test {
         vm.expectRevert(bytes("refund > jeonse"));
         new JeonseEscrow(
             IERC20(address(krw)), address(pool), landlord, tenantIn, tenantOut,
-            100e18, 200e18, block.timestamp + 1 days
+            100e18, 200e18, block.timestamp + 1 days, TREASURY, 0
         );
     }
 
@@ -171,7 +175,9 @@ contract JeonseEscrowTest is Test {
         assertEq(esc.claimable(landlord), JEONSE - REFUND);
         assertEq(krw.balanceOf(address(pool)), 290_000_000e18 - (REFUND - fee) + REFUND);
         // 풀 수익 = fee → 예치자 자산 증가
-        assertEq(pool.totalAssets(), 290_000_000e18 + fee);
+        uint256 cut = (fee * POOL_CUT_BPS) / 10000;
+        assertEq(pool.totalAssets(), 290_000_000e18 + fee - cut); // LP 자산
+        assertEq(pool.treasuryAccrued(), cut);                    // 프로토콜 몫
     }
 
     function test_OnlyTenantOutOfValidEscrowCanBridge() public {
@@ -213,8 +219,51 @@ contract JeonseEscrowTest is Test {
 
         // 전액 출금 시 원금 + 수수료 수익
         uint256 fee = (REFUND * pool.FEE_BPS()) / 10000;
+        uint256 cut = (fee * POOL_CUT_BPS) / 10000;
         vm.prank(lp);
         pool.withdraw(shares);
-        assertEq(krw.balanceOf(lp), 30 * 10_000_000e18 - 290_000_000e18 + 290_000_000e18 + fee);
+        assertEq(krw.balanceOf(lp), 30 * 10_000_000e18 + fee - cut);
+
+        // 프로토콜은 적립분 수취 가능
+        vm.prank(TREASURY);
+        pool.claimFees();
+        assertEq(krw.balanceOf(TREASURY), cut);
+    }
+
+    // ---- 프로토콜 정산 수수료 ----
+
+    function test_SettleFeeTakenFromLandlordShare() public {
+        JeonseEscrow f = new JeonseEscrow(
+            IERC20(address(krw)), address(pool), landlord, tenantIn, tenantOut,
+            JEONSE, REFUND, block.timestamp + SETTLE_DELAY, TREASURY, 50 // 0.5%
+        );
+        vm.startPrank(tenantIn);
+        krw.approve(address(f), type(uint256).max);
+        f.fund();
+        vm.stopPrank();
+        vm.warp(f.settleDate());
+        f.settle();
+
+        uint256 fee = (JEONSE * 50) / 10000; // 1.5M
+        assertEq(krw.balanceOf(TREASURY), fee);
+        assertEq(f.claimable(landlord), JEONSE - REFUND - fee); // 집주인 차액에서 차감
+        assertEq(f.claimable(tenantOut), REFUND);               // 반환금은 그대로
+    }
+
+    function test_SettleFeeCappedAtLandlordShare() public {
+        // 차액 0이면 수수료도 0 (반환 보증금은 절대 건드리지 않음)
+        JeonseEscrow f = new JeonseEscrow(
+            IERC20(address(krw)), address(pool), landlord, tenantIn, tenantOut,
+            REFUND, REFUND, block.timestamp + SETTLE_DELAY, TREASURY, 50
+        );
+        vm.startPrank(tenantIn);
+        krw.approve(address(f), type(uint256).max);
+        f.fund();
+        vm.stopPrank();
+        vm.warp(f.settleDate());
+        f.settle();
+
+        assertEq(krw.balanceOf(TREASURY), 0);
+        assertEq(f.claimable(tenantOut), REFUND);
     }
 }

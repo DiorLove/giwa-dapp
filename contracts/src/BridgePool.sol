@@ -13,9 +13,12 @@ contract BridgePool {
 
     IERC20 public immutable token;
     uint256 public constant FEE_BPS = 50; // 선지급 수수료 0.5% (할인 지급 방식)
+    address public immutable treasury;        // 프로토콜 수수료 수취처
+    uint256 public immutable protocolFeeBps;  // 선지급 수수료 중 프로토콜 몫 (수수료 대비 bps)
 
     uint256 public totalShares;
     uint256 public totalOutstanding; // 상환 예정 원금 합계
+    uint256 public treasuryAccrued;  // 프로토콜 몫 적립분 (LP 자산에서 제외)
     mapping(address => uint256) public shares;
     mapping(address => uint256) public debtOf; // escrow => 상환 예정액
 
@@ -23,14 +26,18 @@ contract BridgePool {
     event Withdrawn(address indexed lp, uint256 amount, uint256 burned);
     event BridgeAdvanced(address indexed escrow, address indexed tenantOut, uint256 advanced, uint256 fee);
     event Repaid(address indexed escrow, uint256 amount);
+    event FeesClaimed(uint256 amount);
 
-    constructor(IERC20 _token) {
+    constructor(IERC20 _token, address _treasury, uint256 _protocolFeeBps) {
+        require(_protocolFeeBps <= 5000, "cut too high"); // 수수료의 최대 50%
         token = _token;
+        treasury = _treasury;
+        protocolFeeBps = _protocolFeeBps;
     }
 
-    /// 풀 총자산 = 보유 현금 + 상환 예정 채권
+    /// LP 총자산 = 보유 현금 + 상환 예정 채권 - 프로토콜 적립분
     function totalAssets() public view returns (uint256) {
-        return token.balanceOf(address(this)) + totalOutstanding;
+        return token.balanceOf(address(this)) + totalOutstanding - treasuryAccrued;
     }
 
     function deposit(uint256 amount) external {
@@ -69,8 +76,20 @@ contract BridgePool {
         esc.registerBridge();
         debtOf[escrowAddr] = refund;
         totalOutstanding += refund;
+        // 수수료 분배: 프로토콜 몫 적립, 나머지는 LP 자산으로 귀속
+        treasuryAccrued += (fee * protocolFeeBps) / 10000;
         token.safeTransfer(msg.sender, advance);
         emit BridgeAdvanced(escrowAddr, msg.sender, advance, fee);
+    }
+
+    /// 프로토콜 적립 수수료 수취 (treasury 전용)
+    function claimFees() external {
+        require(msg.sender == treasury, "not treasury");
+        uint256 amt = treasuryAccrued;
+        require(amt > 0, "nothing accrued");
+        treasuryAccrued = 0;
+        token.safeTransfer(treasury, amt);
+        emit FeesClaimed(amt);
     }
 
     /// 에스크로 정산 시 콜백 — 상환 예정 채권을 소멸시킨다 (토큰은 settle이 직접 전송)
