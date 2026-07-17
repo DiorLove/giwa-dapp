@@ -107,6 +107,20 @@ export default function KyePage({ params }: { params: Promise<{ address: string 
 
   function approveThen(amount: bigint, name: string, fnName: "join" | "pay") {
     return run(name, async () => {
+      const bal = (await publicClient!.readContract({
+        address: MOCKKRW_ADDRESS,
+        abi: mockKrwAbi,
+        functionName: "balanceOf",
+        args: [me!],
+      })) as bigint;
+      if (bal < amount) {
+        throw new Error(
+          t(
+            `mKRW 잔액이 부족합니다 — 필요 ${fmtKRW(amount)}, 보유 ${fmtKRW(bal)}. 대시보드에서 '테스트 원화 발급'을 눌러 충전하세요.`,
+            `Insufficient mKRW — need ${fmtKRW(amount)}, you have ${fmtKRW(bal)}. Mint test KRW from the dashboard.`
+          )
+        );
+      }
       const allowance = (await publicClient!.readContract({
         address: MOCKKRW_ADDRESS,
         abi: mockKrwAbi,

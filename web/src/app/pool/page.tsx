@@ -122,6 +122,14 @@ export default function PoolPage() {
               onClick={() =>
                 run("deposit", async () => {
                   const amt = parseUnits(amount, 18);
+                  if (myBalance < amt) {
+                    throw new Error(
+                      t(
+                        `mKRW 잔액이 부족합니다 — 필요 ${fmtKRW(amt)}, 보유 ${fmtKRW(myBalance)}.`,
+                        `Insufficient mKRW — need ${fmtKRW(amt)}, you have ${fmtKRW(myBalance)}.`
+                      )
+                    );
+                  }
                   const allowance = (await publicClient!.readContract({
                     address: MOCKKRW_ADDRESS,
                     abi: mockKrwAbi,
