@@ -109,10 +109,11 @@ contract Mulle {
 
     // ---------- 시작 ----------
 
-    /// Random 모드: 정원이 차면 누구나 호출 → 온체인 제비뽑기로 순번 확정
+    /// Random 모드: 정원이 차면 개설자만 호출 → 온체인 제비뽑기로 순번 확정
     function start() external {
         require(state == State.Recruiting, "not recruiting");
         require(orderMode == OrderMode.Random, "assigned mode");
+        require(msg.sender == organizer, "not organizer");
         require(members.length == maxMembers, "not full");
         address[] memory order = members;
         uint256 seed = uint256(keccak256(abi.encode(blockhash(block.number - 1), address(this))));

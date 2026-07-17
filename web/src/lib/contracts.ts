@@ -8,10 +8,10 @@ export const BRIDGE_POOL_ADDRESS = process.env
   .NEXT_PUBLIC_BRIDGE_POOL_ADDRESS as `0x${string}`;
 
 // 구 배포분 — 목록에 레거시로 병합 표시.
-// LEGACY_FACTORY: 계모임 v1(수수료 도입 전). MulleFactory 는 v2 그대로 사용 중.
+// LEGACY_FACTORY: start() 개설자 강제 패치 전 계모임 팩토리(기존 계 보존용).
 // LEGACY_JEONSE_FACTORY: 인플레이션 방어 패치 전 v2 전세 팩토리(데모 거래 보존용).
 export const LEGACY_FACTORY_ADDRESS =
-  "0x41e70B75eE359A86F54daE3B342C5b876b0Cdd2e" as `0x${string}`;
+  "0x9CB12AD424Ffd1F0349a338631166E087a3dDF70" as `0x${string}`;
 export const LEGACY_JEONSE_FACTORY_ADDRESS =
   "0x5622e3B98c04507E2185667131C75344Fe077012" as `0x${string}`;
 

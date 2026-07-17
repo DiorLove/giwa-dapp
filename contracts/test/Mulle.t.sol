@@ -107,7 +107,7 @@ contract MulleTest is Test {
     function test_RandomStartShufflesOrder() public {
         _joinAll();
         vm.roll(block.number + 10); // blockhash 확보
-        mulle.start();
+        vm.prank(org); mulle.start();
         assertEq(uint8(mulle.state()), uint8(Mulle.State.Active));
         address[] memory order = mulle.getPayoutOrder();
         assertEq(order.length, 3);
@@ -124,7 +124,18 @@ contract MulleTest is Test {
     function test_CannotStartUntilFull() public {
         vm.prank(org); mulle.join();
         vm.expectRevert(bytes("not full"));
+        vm.prank(org); mulle.start();
+    }
+
+    function test_OnlyOrganizerCanStart() public {
+        _joinAll();
+        vm.roll(block.number + 10);
+        vm.prank(m2);
+        vm.expectRevert(bytes("not organizer"));
         mulle.start();
+        // 개설자는 성공
+        vm.prank(org); mulle.start();
+        assertEq(uint8(mulle.state()), uint8(Mulle.State.Active));
     }
 
     function _newAssignedMulle() internal returns (Mulle) {
@@ -196,7 +207,7 @@ contract MulleTest is Test {
     function _startRandom() internal {
         _joinAll();
         vm.roll(block.number + 10);
-        mulle.start();
+        vm.prank(org); mulle.start();
     }
 
     function _payAll() internal {
@@ -371,7 +382,7 @@ contract MulleTest is Test {
             vm.stopPrank();
         }
         vm.roll(block.number + 10);
-        z.start();
+        vm.prank(org); z.start();
         vm.prank(org); z.pay();
         vm.prank(m2); z.pay();
         vm.warp(z.roundEnd(0));
@@ -398,7 +409,7 @@ contract MulleTest is Test {
             vm.stopPrank();
         }
         vm.roll(block.number + 10);
-        f.start();
+        vm.prank(org); f.start();
         vm.prank(org); f.pay();
         vm.prank(m2); f.pay();
         vm.prank(m3); f.pay();
