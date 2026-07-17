@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="web/public/logo.png" alt="이음 IEUM" width="96" height="96" />
+
 # 이음 IEUM
 
 **돈이 사람 손을 거치지 않는 온체인 에스크로 프로토콜**
