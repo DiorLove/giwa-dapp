@@ -14,11 +14,26 @@ export function GuideSteps({
   steps: { t: string; d: string }[];
 }) {
   const { t } = useLang();
-  const [visible, setVisible] = useState(false);
+  // 기본은 펼침. X를 누르면 접히고(localStorage 기억), 칩을 누르면 다시 펼쳐진다.
+  const [open, setOpen] = useState(true);
   useEffect(() => {
-    if (!localStorage.getItem(`ieum-guide:${id}`)) setVisible(true);
+    if (localStorage.getItem(`ieum-guide:${id}`) === "1") setOpen(false);
   }, [id]);
-  if (!visible) return null;
+
+  if (!open)
+    return (
+      <button
+        onClick={() => {
+          localStorage.removeItem(`ieum-guide:${id}`);
+          setOpen(true);
+        }}
+        className="pressable mt-10 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-4 py-2 text-xs text-white/45 transition-colors hover:border-white/20 hover:text-white/80"
+      >
+        <Compass size={13} />
+        {title}
+      </button>
+    );
+
   return (
     <section className="stagger-item mt-10 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-7">
       <div className="flex items-center justify-between">
@@ -29,9 +44,10 @@ export function GuideSteps({
         <button
           onClick={() => {
             localStorage.setItem(`ieum-guide:${id}`, "1");
-            setVisible(false);
+            setOpen(false);
           }}
-          aria-label={t("가이드 닫기", "Dismiss guide")}
+          aria-label={t("가이드 접기", "Collapse guide")}
+          title={t("접기 — 언제든 다시 펼칠 수 있어요", "Collapse — you can reopen anytime")}
           className="pressable -m-1 p-1 text-white/30 transition-colors hover:text-white"
         >
           <X size={15} />
