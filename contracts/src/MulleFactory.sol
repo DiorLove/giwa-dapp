@@ -7,12 +7,16 @@ import {Mulle} from "./Mulle.sol";
 /// @title 물레 공방 — 계 생성 + 전체 목록
 contract MulleFactory {
     IERC20 public immutable token;
+    address public immutable treasury;
+    uint256 public immutable potFeeBps;
     address[] public allMulles;
 
     event MulleCreated(address indexed mulle, address indexed organizer);
 
-    constructor(IERC20 _token) {
+    constructor(IERC20 _token, address _treasury, uint256 _potFeeBps) {
         token = _token;
+        treasury = _treasury;
+        potFeeBps = _potFeeBps;
     }
 
     function createMulle(
@@ -25,7 +29,8 @@ contract MulleFactory {
     ) external returns (address) {
         Mulle m = new Mulle(
             token, msg.sender, maxMembers, contribution,
-            roundDuration, depositRounds, recruitPeriod, orderMode
+            roundDuration, depositRounds, recruitPeriod, orderMode,
+            treasury, potFeeBps
         );
         allMulles.push(address(m));
         emit MulleCreated(address(m), msg.sender);

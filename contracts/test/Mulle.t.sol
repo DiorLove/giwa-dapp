@@ -20,12 +20,13 @@ contract MulleTest is Test {
     uint256 constant RECRUIT_PERIOD = 7 days;
     uint8 constant MEMBERS = 3;
     uint8 constant DEPOSIT_ROUNDS = 1; // 보증금 = 1회분
+    address constant TREASURY = address(0xFEE);
 
     function setUp() public {
         krw = new MockKRW();
         mulle = new Mulle(
             IERC20(address(krw)), org, MEMBERS, CONTRIBUTION,
-            ROUND, DEPOSIT_ROUNDS, RECRUIT_PERIOD, Mulle.OrderMode.Random
+            ROUND, DEPOSIT_ROUNDS, RECRUIT_PERIOD, Mulle.OrderMode.Random, TREASURY, 0
         );
         address[3] memory all = [org, m2, m3];
         for (uint256 i = 0; i < 3; i++) {
@@ -46,9 +47,9 @@ contract MulleTest is Test {
 
     function test_ConstructorValidation() public {
         vm.expectRevert(bytes("members 3-12"));
-        new Mulle(IERC20(address(krw)), org, 2, CONTRIBUTION, ROUND, 1, RECRUIT_PERIOD, Mulle.OrderMode.Random);
+        new Mulle(IERC20(address(krw)), org, 2, CONTRIBUTION, ROUND, 1, RECRUIT_PERIOD, Mulle.OrderMode.Random, TREASURY, 0);
         vm.expectRevert(bytes("deposit 0-2"));
-        new Mulle(IERC20(address(krw)), org, 3, CONTRIBUTION, ROUND, 3, RECRUIT_PERIOD, Mulle.OrderMode.Random);
+        new Mulle(IERC20(address(krw)), org, 3, CONTRIBUTION, ROUND, 3, RECRUIT_PERIOD, Mulle.OrderMode.Random, TREASURY, 0);
     }
 
     function test_JoinPullsDeposit() public {
@@ -129,7 +130,7 @@ contract MulleTest is Test {
     function _newAssignedMulle() internal returns (Mulle) {
         Mulle a = new Mulle(
             IERC20(address(krw)), org, MEMBERS, CONTRIBUTION,
-            ROUND, DEPOSIT_ROUNDS, RECRUIT_PERIOD, Mulle.OrderMode.Assigned
+            ROUND, DEPOSIT_ROUNDS, RECRUIT_PERIOD, Mulle.OrderMode.Assigned, TREASURY, 0
         );
         address[3] memory all = [org, m2, m3];
         for (uint256 i = 0; i < 3; i++) {
@@ -360,7 +361,7 @@ contract MulleTest is Test {
         // 보증금 0인 계는 첫 미납에 바로 파탄
         Mulle z = new Mulle(
             IERC20(address(krw)), org, MEMBERS, CONTRIBUTION,
-            ROUND, 0, RECRUIT_PERIOD, Mulle.OrderMode.Random
+            ROUND, 0, RECRUIT_PERIOD, Mulle.OrderMode.Random, TREASURY, 0
         );
         address[3] memory all = [org, m2, m3];
         for (uint256 i = 0; i < 3; i++) {
@@ -380,5 +381,36 @@ contract MulleTest is Test {
         assertGt(z.claimable(org), 0);
         assertGt(z.claimable(m2), 0);
         assertEq(z.claimable(m3), 0);
+    }
+
+    // ---- 프로토콜 수수료 ----
+
+    function test_PotFeeGoesToTreasury() public {
+        Mulle f = new Mulle(
+            IERC20(address(krw)), org, MEMBERS, CONTRIBUTION,
+            ROUND, DEPOSIT_ROUNDS, RECRUIT_PERIOD, Mulle.OrderMode.Random, TREASURY, 10 // 0.1%
+        );
+        address[3] memory all = [org, m2, m3];
+        for (uint256 i = 0; i < 3; i++) {
+            vm.startPrank(all[i]);
+            krw.approve(address(f), type(uint256).max);
+            f.join();
+            vm.stopPrank();
+        }
+        vm.roll(block.number + 10);
+        f.start();
+        vm.prank(org); f.pay();
+        vm.prank(m2); f.pay();
+        vm.prank(m3); f.pay();
+        vm.warp(f.roundEnd(0));
+        vm.prank(outsider);
+        f.settle();
+
+        uint256 pot = CONTRIBUTION * 3;
+        uint256 reward = (pot * 10) / 10000;
+        uint256 potFee = (pot * 10) / 10000;
+        address recipient = f.getPayoutOrder()[0];
+        assertEq(f.claimable(recipient), pot - reward - potFee);
+        assertEq(krw.balanceOf(TREASURY), potFee); // 수수료 즉시 수취
     }
 }

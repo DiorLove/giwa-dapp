@@ -14,7 +14,7 @@ contract MulleFactoryTest is Test {
 
     function setUp() public {
         krw = new MockKRW();
-        factory = new MulleFactory(IERC20(address(krw)));
+        factory = new MulleFactory(IERC20(address(krw)), address(0xFEE), 10);
     }
 
     function test_CreateMulleRegistersAndSetsOrganizer() public {

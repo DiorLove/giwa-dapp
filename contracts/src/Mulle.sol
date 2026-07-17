@@ -19,6 +19,8 @@ contract Mulle {
     uint256 public immutable deposit;         // 보증금 = depositRounds * contribution
     uint256 public immutable recruitDeadline;
     OrderMode public immutable orderMode;
+    address public immutable treasury;    // 프로토콜 수수료 수취처
+    uint256 public immutable potFeeBps;   // 곗돈 지급 시 프로토콜 수수료 (bps)
 
     State public state;                       // 기본값 Recruiting
     address[] public members;
@@ -59,12 +61,15 @@ contract Mulle {
         uint256 _roundDuration,
         uint8 _depositRounds,
         uint256 _recruitPeriod,
-        OrderMode _orderMode
+        OrderMode _orderMode,
+        address _treasury,
+        uint256 _potFeeBps
     ) {
         require(_maxMembers >= 3 && _maxMembers <= 12, "members 3-12");
         require(_contribution > 0, "contribution=0");
         require(_roundDuration > 0, "duration=0");
         require(_depositRounds <= 2, "deposit 0-2");
+        require(_potFeeBps <= 100, "fee too high"); // 최대 1%
         token = _token;
         organizer = _organizer;
         maxMembers = _maxMembers;
@@ -73,6 +78,8 @@ contract Mulle {
         deposit = uint256(_depositRounds) * _contribution;
         recruitDeadline = block.timestamp + _recruitPeriod;
         orderMode = _orderMode;
+        treasury = _treasury;
+        potFeeBps = _potFeeBps;
     }
 
     // ---------- 모집 ----------
@@ -200,12 +207,16 @@ contract Mulle {
 
         uint256 pot = contribution * maxMembers;
         uint256 reward = (pot * SETTLE_REWARD_BPS) / 10000;
+        uint256 potFee = (pot * potFeeBps) / 10000;
         address recipient = payoutOrder[round];
-        claimable[recipient] += pot - reward;
+        claimable[recipient] += pot - reward - potFee;
         claimable[msg.sender] += reward;
-        totalClaimable += pot;
+        totalClaimable += pot - potFee;
         hasReceived[recipient] = true;
-        emit Settled(round, recipient, pot - reward);
+        if (potFee > 0) {
+            token.safeTransfer(treasury, potFee);
+        }
+        emit Settled(round, recipient, pot - reward - potFee);
 
         currentRound = round + 1;
         if (currentRound == maxMembers) {

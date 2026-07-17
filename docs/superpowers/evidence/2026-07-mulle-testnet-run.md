@@ -44,3 +44,37 @@ GIWA Sepolia에서 생성→참여→추첨→납입→정산→수령까지 전
 - `currentRound()` = 3 (전 회차 종료)
 - 계 컨트랙트 mKRW 잔액 = 0
 - Foundry 단위 테스트 28/28 PASS
+
+---
+
+# 이음 전세 에스크로 + 브리지 풀 — GIWA Sepolia 완주 기록 (2026-07-16)
+
+집주인(A)·신규 세입자(B)·기존 세입자(C) 3자 시나리오:
+전세금 ₩5,000,000 락 → 문서 앵커링 → C 브리지 선지급 ₩4,477,500 (0.5% 할인)
+→ 정산일 도래 → **단일 트랜잭션 원자 정산** (풀 상환 4.5M + 집주인 차액 0.5M)
+→ 최종 에스크로 잔액 0, 풀 수수료 수익 ₩22,500 (totalAssets 6,022,500).
+
+## 컨트랙트 (Verified 제출 완료)
+
+| 컨트랙트 | 주소 |
+|---|---|
+| BridgePool | [0x9f7c5453af044f4c8Ab40eC3A0DF2121cB8bFbd5](https://sepolia-explorer.giwa.io/address/0x9f7c5453af044f4c8Ab40eC3A0DF2121cB8bFbd5) |
+| JeonseFactory | [0xD37eD0FBEeD8BC364982F2E60B90B48D8067DE08](https://sepolia-explorer.giwa.io/address/0xD37eD0FBEeD8BC364982F2E60B90B48D8067DE08) |
+| 완주 데모 에스크로 | [0x8a29Eaae4441289482D100aEE428d1DCa99D589c](https://sepolia-explorer.giwa.io/address/0x8a29Eaae4441289482D100aEE428d1DCa99D589c) |
+
+## 트랜잭션 타임라인
+
+| 단계 | Tx Hash |
+|---|---|
+| LP 풀 예치 ₩6,000,000 | `0x5667cf62999640864f50f2ccb9374b2ae7453517a52ccf59fed981349cc68d89` |
+| createEscrow (전세 5M / 반환 4.5M) | `0x0c0a817a9bc0bffc52de917d12523907b4f821751a7ed6ff2f96b070b6fd38c0` |
+| B fund (전세금 락) | `0x3e003d3453e8a50ff4b2c794c13e25d777325de78a9abd76b91d76ff5b245878` |
+| C 브리지 선지급 | `0x95ddf382224697331d681ee7002cb39b57a7bfaec5d811e810d689e765f32469` |
+| **원자적 연쇄 정산** | `0x8e9e15adeea7793ce7a342ed97a4aa61fd5c2f770f85ca67644b1fed8257d678` |
+
+## 검증 결과
+
+- 정산 후 `state()` = 2 (Settled), `totalOutstanding()` = 0
+- 에스크로 mKRW 잔액 = 0 (전액 분배 완료)
+- 풀 totalAssets = 6,022,500 mKRW (수수료 수익 반영)
+- Foundry 단위 테스트 40/40 PASS (이음 12개 포함)
