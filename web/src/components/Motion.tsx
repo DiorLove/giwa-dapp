@@ -1,8 +1,15 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion, useSpring, useTransform } from "framer-motion";
 
 export const EASE = [0.23, 1, 0.32, 1] as const;
+
+/** SSR과 클라이언트 지갑 상태 불일치로 인한 하이드레이션 오류 방지용 */
+export function useMounted() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted;
+}
 
 /** 마운트 시 아래에서 떠오르는 래퍼 — 페이지 섹션 스태거용 */
 export function FadeUp({

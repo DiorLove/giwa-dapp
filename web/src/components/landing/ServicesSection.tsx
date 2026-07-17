@@ -9,8 +9,7 @@ const EASE = [0.23, 1, 0.32, 1] as const;
 
 const CARDS = [
   {
-    video:
-      "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4",
+    video: "/videos/v4.mp4",
     tag: ["메인 프로덕트", "Main Product"],
     title: ["전세 에스크로 — 원자적 연쇄 정산", "Jeonse Escrow — Atomic Chain Settlement"],
     desc: [
@@ -20,8 +19,7 @@ const CARDS = [
     href: "/jeonse",
   },
   {
-    video:
-      "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260324_151826_c7218672-6e92-402c-9e45-f1e0f454bdc4.mp4",
+    video: "/videos/v5.mp4",
     tag: ["에스크로 패밀리", "Escrow Family"],
     title: ["계모임 — 계주 없는 계", "Gye — Savings Circles Without an Organizer"],
     desc: [

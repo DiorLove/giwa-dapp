@@ -5,6 +5,7 @@ import { useAccount, useConnect, useReadContract, useReadContracts } from "wagmi
 import { ArrowUpRight, Plus } from "lucide-react";
 import {
   JEONSE_FACTORY_ADDRESS,
+  LEGACY_JEONSE_FACTORY_ADDRESS,
   BRIDGE_POOL_ADDRESS,
   jeonseFactoryAbi,
   jeonseAbi,
@@ -13,7 +14,7 @@ import {
   shortAddr,
 } from "@/lib/contracts";
 import { AppNav } from "@/components/AppNav";
-import { AnimatedNumber, FadeUp } from "@/components/Motion";
+import { AnimatedNumber, FadeUp, useMounted } from "@/components/Motion";
 import { useLang } from "@/lib/i18n";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
@@ -30,13 +31,22 @@ export default function JeonseList() {
   const { address } = useAccount();
   const { connect, connectors } = useConnect();
   const [view, setView] = useState<"mine" | "all">("mine");
+  const mounted = useMounted();
   const { data: all } = useReadContract({
     address: JEONSE_FACTORY_ADDRESS,
     abi: jeonseFactoryAbi,
     functionName: "getAll",
     query: { refetchInterval: 5000 },
   });
-  const escrows = (all ?? []) as `0x${string}`[];
+  const { data: legacy } = useReadContract({
+    address: LEGACY_JEONSE_FACTORY_ADDRESS,
+    abi: jeonseFactoryAbi,
+    functionName: "getAll",
+  });
+  const escrows = [
+    ...((legacy ?? []) as `0x${string}`[]),
+    ...((all ?? []) as `0x${string}`[]),
+  ];
 
   const { data: poolAssets } = useReadContract({
     address: BRIDGE_POOL_ADDRESS,
@@ -155,6 +165,8 @@ export default function JeonseList() {
             </div>
           </div>
           <div className="overflow-hidden rounded-2xl border border-white/[0.06]">
+            {!mounted && <div className="skeleton m-4 h-24" />}
+            {mounted && (<>
             <div className="hidden grid-cols-[1fr_150px_150px_150px_120px_48px] gap-4 border-b border-white/[0.06] px-6 py-3 text-xs uppercase tracking-[0.12em] text-white/30 md:grid">
               <span>{t("컨트랙트", "Contract")}</span>
               <span className="text-right">{t("신규 전세금", "New Deposit")}</span>
@@ -264,6 +276,7 @@ export default function JeonseList() {
               );
                 });
               })()}
+            </>)}
           </div>
         </FadeUp>
       </main>

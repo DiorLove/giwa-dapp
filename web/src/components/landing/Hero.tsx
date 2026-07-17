@@ -22,8 +22,7 @@ const riseBlur = {
   },
 };
 
-const HERO_VIDEO =
-  "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260405_074625_a81f018a-956b-43fb-9aee-4d1508e30e6a.mp4";
+const HERO_VIDEO = "/videos/v1.mp4";
 
 export function Hero() {
   const { t } = useLang();
@@ -99,7 +98,9 @@ export function Hero() {
       >
         <div className="liquid-glass mx-auto flex max-w-5xl items-center justify-between rounded-full px-6 py-3">
           <div className="flex items-center">
-            <span className="font-display text-lg text-white">
+            <span className="flex items-center gap-2.5 font-display text-lg text-white">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="" className="h-7 w-7 rounded-full" />
               이음 <span className="text-white/40">IEUM</span>
             </span>
             <div className="ml-8 hidden gap-8 md:flex">

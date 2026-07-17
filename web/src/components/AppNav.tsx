@@ -19,7 +19,12 @@ export function AppNav() {
     <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-black/70 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <div className="flex items-center gap-10">
-          <Link href="/" className="font-display text-xl tracking-tight text-white">
+          <Link
+            href="/"
+            className="flex items-center gap-2.5 font-display text-xl tracking-tight text-white"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="" className="h-7 w-7 rounded-full" />
             이음 <span className="text-white/40">IEUM</span>
           </Link>
           <nav className="hidden items-center gap-7 md:flex">

@@ -5,6 +5,7 @@ import { useAccount, useReadContract, useReadContracts, useWriteContract } from 
 import { ArrowUpRight, Plus } from "lucide-react";
 import {
   FACTORY_ADDRESS,
+  LEGACY_FACTORY_ADDRESS,
   MOCKKRW_ADDRESS,
   factoryAbi,
   mockKrwAbi,
@@ -13,7 +14,7 @@ import {
   shortAddr,
 } from "@/lib/contracts";
 import { AppNav } from "@/components/AppNav";
-import { AnimatedNumber, FadeUp } from "@/components/Motion";
+import { AnimatedNumber, FadeUp, useMounted } from "@/components/Motion";
 import { useLang } from "@/lib/i18n";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
@@ -31,13 +32,22 @@ export default function AppHome() {
   const { writeContract, isPending } = useWriteContract();
   const [view, setView] = useState<"mine" | "all">("mine");
 
+  const mounted = useMounted();
   const { data: all } = useReadContract({
     address: FACTORY_ADDRESS,
     abi: factoryAbi,
     functionName: "getAll",
     query: { refetchInterval: 5000 },
   });
-  const mulles = (all ?? []) as `0x${string}`[];
+  const { data: legacy } = useReadContract({
+    address: LEGACY_FACTORY_ADDRESS,
+    abi: factoryAbi,
+    functionName: "getAll",
+  });
+  const mulles = [
+    ...((legacy ?? []) as `0x${string}`[]),
+    ...((all ?? []) as `0x${string}`[]),
+  ];
 
   const { data: balance, refetch } = useReadContract({
     address: MOCKKRW_ADDRESS,
@@ -97,7 +107,7 @@ export default function AppHome() {
           <div className="bg-black p-6 transition-colors hover:bg-white/[0.02]">
             <p className="text-xs uppercase tracking-[0.15em] text-white/35">{t("내 참여", "My Circles")}</p>
             <p className="mt-2 text-3xl font-medium text-white tabular-nums">
-              {address ? <AnimatedNumber value={myCount} /> : "—"}
+              {mounted && address ? <AnimatedNumber value={myCount} /> : "—"}
             </p>
           </div>
           <div className="bg-black p-6 transition-colors hover:bg-white/[0.02]">
@@ -105,7 +115,7 @@ export default function AppHome() {
               <div>
                 <p className="text-xs uppercase tracking-[0.15em] text-white/35">{t("mKRW 잔액", "mKRW Balance")}</p>
                 <p className="mt-2 text-3xl font-medium text-white tabular-nums">
-                  {address ? (
+                  {mounted && address ? (
                     <AnimatedNumber
                       value={Number((balance ?? 0n) / 10n ** 18n)}
                       format={(n) => "₩" + n.toLocaleString("ko-KR")}
@@ -115,7 +125,7 @@ export default function AppHome() {
                   )}
                 </p>
               </div>
-              {address && (
+              {mounted && address && (
                 <button
                   disabled={isPending}
                   onClick={() =>
@@ -158,6 +168,8 @@ export default function AppHome() {
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-white/[0.06]">
+            {!mounted && <div className="skeleton m-4 h-24" />}
+            {mounted && (<>
             <div className="hidden grid-cols-[1fr_140px_140px_120px_48px] gap-4 border-b border-white/[0.06] px-6 py-3 text-xs uppercase tracking-[0.12em] text-white/30 md:grid">
               <span>{t("컨트랙트", "Contract")}</span>
               <span className="text-right">{t("회당 납입", "Per Round")}</span>
@@ -226,6 +238,7 @@ export default function AppHome() {
                 </Link>
               );
               })}
+            </>)}
           </div>
         </FadeUp>
 

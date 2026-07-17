@@ -7,6 +7,12 @@ export const JEONSE_FACTORY_ADDRESS = process.env
 export const BRIDGE_POOL_ADDRESS = process.env
   .NEXT_PUBLIC_BRIDGE_POOL_ADDRESS as `0x${string}`;
 
+// v1 배포분 (수수료 도입 전) — 목록에 레거시로 병합 표시
+export const LEGACY_FACTORY_ADDRESS =
+  "0x41e70B75eE359A86F54daE3B342C5b876b0Cdd2e" as `0x${string}`;
+export const LEGACY_JEONSE_FACTORY_ADDRESS =
+  "0xD37eD0FBEeD8BC364982F2E60B90B48D8067DE08" as `0x${string}`;
+
 export const mockKrwAbi = parseAbi([
   "function faucet()",
   "function balanceOf(address) view returns (uint256)",

@@ -4,8 +4,7 @@ import { motion, useInView } from "framer-motion";
 import { useLang } from "@/lib/i18n";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
-const VIDEO =
-  "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260307_083826_e938b29f-a43a-41ec-a153-3d4730578ab8.mp4";
+const VIDEO = "/videos/v3.mp4";
 
 export function PhilosophySection() {
   const { t } = useLang();
