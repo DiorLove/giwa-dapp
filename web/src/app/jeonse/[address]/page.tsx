@@ -2,7 +2,7 @@
 import { use, useEffect, useRef, useState } from "react";
 import { useAccount, usePublicClient, useReadContracts, useWriteContract } from "wagmi";
 import { keccak256, maxUint256, toBytes } from "viem";
-import { ArrowUpRight, FileCheck, Lock, Eye, Paperclip, X } from "lucide-react";
+import { ArrowUpRight, FileCheck, Lock, Eye, Paperclip, X, Share2, Check } from "lucide-react";
 import {
   BRIDGE_POOL_ADDRESS,
   MOCKKRW_ADDRESS,
@@ -72,7 +72,31 @@ export default function JeonseDetail({ params }: { params: Promise<{ address: st
   const [docLabel, setDocLabel] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [localDocs, setLocalDocs] = useState<Record<string, { name: string; type: string }>>({});
+  const [shared, setShared] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  async function shareEscrow() {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    const shareData = {
+      title: t("이음 전세 에스크로", "IEUM Jeonse Escrow"),
+      text: t(
+        "이음에서 전세 에스크로에 참여해 주세요.",
+        "Join this jeonse escrow on IEUM."
+      ),
+      url,
+    };
+    try {
+      if (navigator.share && /Mobi|Android|iPhone/i.test(navigator.userAgent)) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch {
+      /* 사용자가 공유 취소 → 링크 복사로 폴백 */
+    }
+    await navigator.clipboard.writeText(url);
+    setShared(true);
+    setTimeout(() => setShared(false), 1600);
+  }
 
   const { data, refetch } = useReadContracts({
     contracts: [
@@ -250,15 +274,24 @@ export default function JeonseDetail({ params }: { params: Promise<{ address: st
               {t("정산일", "Settles")} {new Date(settleDate * 1000).toLocaleString("ko-KR")}
             </p>
           </div>
-          <a
-            href={explorerUrl(`address/${esc}`)}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 self-start text-sm text-white/40 transition-colors hover:text-white md:self-auto"
-          >
-            <span className="font-mono">{shortAddr(esc)}</span>
-            <ArrowUpRight size={14} />
-          </a>
+          <div className="flex items-center gap-2 self-start md:self-auto">
+            <button
+              onClick={shareEscrow}
+              className="pressable inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-sm font-medium text-white/80 transition-colors hover:border-white/30 hover:text-white"
+            >
+              {shared ? <Check size={14} className="text-emerald-300" /> : <Share2 size={14} />}
+              {shared ? t("링크 복사됨", "Link copied") : t("상대방에게 공유", "Share with counterparty")}
+            </button>
+            <a
+              href={explorerUrl(`address/${esc}`)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.06] px-3.5 py-2 text-sm text-white/40 transition-colors hover:text-white"
+            >
+              <span className="font-mono">{shortAddr(esc)}</span>
+              <ArrowUpRight size={14} />
+            </a>
+          </div>
         </FadeUp>
 
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_400px]">
