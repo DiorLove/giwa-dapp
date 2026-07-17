@@ -55,8 +55,10 @@ forge script script/DeployBridgeFix.s.sol --rpc-url https://sepolia-rpc.giwa.io 
 # 2) 웹 dApp
 cd web
 npm install
-npm run dev                                   # http://localhost:3000
+npm run dev                                   # 로컬: http://localhost:3000
 ```
+
+> 🌐 **라이브 데모:** https://ieum-protocol.vercel.app
 
 `web/.env.local` 에 배포된 컨트랙트 주소를 넣으세요 (아래 표 참고).
 

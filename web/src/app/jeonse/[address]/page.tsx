@@ -1,8 +1,8 @@
 "use client";
-import { use, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { useAccount, usePublicClient, useReadContracts, useWriteContract } from "wagmi";
 import { keccak256, maxUint256, toBytes } from "viem";
-import { ArrowUpRight, FileCheck } from "lucide-react";
+import { ArrowUpRight, FileCheck, Lock, Eye, Paperclip, X } from "lucide-react";
 import {
   BRIDGE_POOL_ADDRESS,
   MOCKKRW_ADDRESS,
@@ -20,6 +20,33 @@ import { giwaSepolia } from "@/lib/chain";
 import { useLang } from "@/lib/i18n";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
+
+/** 문서 원본은 온체인이 아니라 로컬(브라우저)에 저장하고, 체인엔 keccak256 해시만 앵커한다.
+ *  공개 원장 특성상 파일 자체는 체인에 올리지 않으며(누구나 열람 가능해지므로),
+ *  열람 권한은 온체인 당사자 검증 + 로컬 보관으로 통제한다.
+ *  운영 단계에선 IPFS + 지갑 서명 기반 대칭키 암호화로 확장 예정. */
+type LocalDoc = { name: string; type: string; dataUrl: string };
+const docKey = (esc: string, hash: string) =>
+  `ieum-doc:${esc.toLowerCase()}:${hash.toLowerCase()}`;
+
+function readLocalDoc(esc: string, hash: string): LocalDoc | null {
+  try {
+    const raw = localStorage.getItem(docKey(esc, hash));
+    return raw ? (JSON.parse(raw) as LocalDoc) : null;
+  } catch {
+    return null;
+  }
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
 const STATE_LABEL: [string, string][] = [
   ["자금 대기", "Awaiting funds"],
   ["락 완료", "Funded"],
@@ -43,6 +70,9 @@ export default function JeonseDetail({ params }: { params: Promise<{ address: st
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [docLabel, setDocLabel] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [localDocs, setLocalDocs] = useState<Record<string, { name: string; type: string }>>({});
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const { data, refetch } = useReadContracts({
     contracts: [
@@ -95,6 +125,69 @@ export default function JeonseDetail({ params }: { params: Promise<{ address: st
     } finally {
       setBusy(null);
     }
+  }
+
+  // 앵커된 각 문서에 대해 로컬 보관 원본이 있는지 조회 (하이드레이션 안전하게 마운트 후)
+  useEffect(() => {
+    const rows = docsQuery.data;
+    if (!rows) return;
+    const map: Record<string, { name: string; type: string }> = {};
+    for (const d of rows) {
+      const doc = d.result as readonly [`0x${string}`, string, `0x${string}`, bigint] | undefined;
+      if (!doc) continue;
+      const meta = readLocalDoc(esc, doc[0]);
+      if (meta) map[doc[0].toLowerCase()] = { name: meta.name, type: meta.type };
+    }
+    setLocalDocs(map);
+  }, [docsQuery.data, esc]);
+
+  // 당사자만 호출: 로컬 보관 원본을 Blob 으로 복원해 새 탭에서 연다
+  function openDoc(hash: string) {
+    const meta = readLocalDoc(esc, hash);
+    if (!meta) return;
+    fetch(meta.dataUrl)
+      .then((r) => r.blob())
+      .then((b) => {
+        const url = URL.createObjectURL(b);
+        window.open(url, "_blank", "noopener,noreferrer");
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      });
+  }
+
+  // 문서 앵커: 파일이 있으면 파일 바이트의 keccak256 을 해시로, 원본은 로컬 저장
+  async function anchorDoc() {
+    let hash: `0x${string}`;
+    const nameForLabel = docLabel || file?.name || "document";
+    if (file) {
+      const buf = new Uint8Array(await file.arrayBuffer());
+      hash = keccak256(buf);
+      const dataUrl = await fileToDataUrl(file);
+      try {
+        localStorage.setItem(
+          docKey(esc, hash),
+          JSON.stringify({ name: file.name, type: file.type, dataUrl })
+        );
+      } catch {
+        throw new Error(
+          t(
+            "파일이 너무 커서 로컬에 저장할 수 없습니다 (데모 한도). 더 작은 파일을 사용하세요.",
+            "File too large to store locally (demo limit). Please use a smaller file."
+          )
+        );
+      }
+    } else {
+      hash = keccak256(toBytes(`${nameForLabel}:${Date.now()}`));
+    }
+    const tx = await writeContractAsync({
+      address: esc,
+      abi: jeonseAbi,
+      functionName: "anchorDocument",
+      args: [hash, nameForLabel],
+    });
+    setDocLabel("");
+    setFile(null);
+    if (fileRef.current) fileRef.current.value = "";
+    return tx;
   }
 
   if (!data)
@@ -215,53 +308,108 @@ export default function JeonseDetail({ params }: { params: Promise<{ address: st
                     | readonly [`0x${string}`, string, `0x${string}`, bigint]
                     | undefined;
                   if (!doc) return null;
+                  const local = localDocs[doc[0].toLowerCase()];
                   return (
                     <div
                       key={i}
-                      className="flex items-center justify-between border-b border-white/[0.06] px-6 py-4 last:border-b-0"
+                      className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-6 py-4 last:border-b-0"
                     >
-                      <span className="flex items-center gap-3 text-sm text-white/70">
-                        <FileCheck size={15} className="text-emerald-300/70" />
-                        {doc[1]}
-                        <span className="font-mono text-xs text-white/25">
+                      <span className="flex min-w-0 items-center gap-3 text-sm text-white/70">
+                        <FileCheck size={15} className="shrink-0 text-emerald-300/70" />
+                        <span className="truncate">{doc[1]}</span>
+                        <span className="hidden font-mono text-xs text-white/25 sm:inline">
                           {doc[0].slice(0, 10)}…
                         </span>
                       </span>
-                      <span className="text-xs text-white/30">
-                        {shortAddr(doc[2])} ·{" "}
-                        {new Date(Number(doc[3]) * 1000).toLocaleDateString("ko-KR")}
+                      <span className="flex shrink-0 items-center gap-4">
+                        <span className="hidden text-xs text-white/30 md:inline">
+                          {shortAddr(doc[2])} ·{" "}
+                          {new Date(Number(doc[3]) * 1000).toLocaleDateString("ko-KR")}
+                        </span>
+                        {local ? (
+                          isParty ? (
+                            <button
+                              onClick={() => openDoc(doc[0])}
+                              className="pressable flex items-center gap-1.5 rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-medium text-white/80 transition-colors hover:border-white/30 hover:text-white"
+                            >
+                              <Eye size={13} />
+                              {t("열람", "View")}
+                            </button>
+                          ) : (
+                            <span className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/30">
+                              <Lock size={13} />
+                              {t("당사자 전용", "Parties only")}
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-xs text-white/25">
+                            {t("해시만 앵커됨", "Hash only")}
+                          </span>
+                        )}
                       </span>
                     </div>
                   );
                 })}
                 {isParty && state !== 2 && state !== 3 && (
-                  <div className="flex gap-2 border-t border-white/[0.06] p-4">
+                  <div className="flex flex-col gap-2 border-t border-white/[0.06] p-4">
                     <input
                       value={docLabel}
                       onChange={(e) => setDocLabel(e.target.value)}
                       placeholder={t("문서 이름 (예: 전세계약서)", "Document name (e.g. lease contract)")}
                       suppressHydrationWarning
-                      className="h-10 flex-1 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-sm text-white outline-none focus:border-white/30"
+                      className="h-10 w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 text-sm text-white outline-none focus:border-white/30"
                     />
-                    <button
-                      disabled={!!busy || !docLabel}
-                      onClick={() =>
-                        run("anchor", () =>
-                          writeContractAsync({
-                            address: esc,
-                            abi: jeonseAbi,
-                            functionName: "anchorDocument",
-                            args: [
-                              keccak256(toBytes(`${docLabel}:${Date.now()}`)),
-                              docLabel,
-                            ],
-                          })
-                        )
-                      }
-                      className="pressable rounded-lg border border-white/15 px-4 text-xs font-medium text-white/70 transition-colors hover:border-white/30 hover:text-white disabled:opacity-40"
-                    >
-                      {busy === "anchor" ? t("앵커 중", "Anchoring") : t("해시 앵커", "Anchor hash")}
-                    </button>
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.hwp,.txt"
+                      onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                      className="hidden"
+                    />
+                    <div className="flex gap-2">
+                      {file ? (
+                        <div className="flex h-10 flex-1 items-center justify-between gap-2 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.05] px-3 text-xs text-emerald-200">
+                          <span className="flex min-w-0 items-center gap-2">
+                            <Paperclip size={13} className="shrink-0" />
+                            <span className="truncate">{file.name}</span>
+                          </span>
+                          <button
+                            onClick={() => {
+                              setFile(null);
+                              if (fileRef.current) fileRef.current.value = "";
+                            }}
+                            className="pressable shrink-0 text-emerald-200/60 hover:text-emerald-200"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => fileRef.current?.click()}
+                          className="pressable flex h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-dashed border-white/15 px-3 text-xs font-medium text-white/50 transition-colors hover:border-white/30 hover:text-white/80"
+                        >
+                          <Paperclip size={13} />
+                          {t("PDF·문서 첨부 (선택)", "Attach PDF / document (optional)")}
+                        </button>
+                      )}
+                      <button
+                        disabled={!!busy || (!docLabel && !file)}
+                        onClick={() => run("anchor", anchorDoc)}
+                        className="pressable shrink-0 rounded-lg border border-white/15 px-4 text-xs font-medium text-white/70 transition-colors hover:border-white/30 hover:text-white disabled:opacity-40"
+                      >
+                        {busy === "anchor"
+                          ? t("앵커 중", "Anchoring")
+                          : file
+                            ? t("문서 앵커", "Anchor document")
+                            : t("해시 앵커", "Anchor hash")}
+                      </button>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-white/25">
+                      {t(
+                        "원본은 체인에 올리지 않고 keccak256 해시만 앵커됩니다 (위·변조 증명). 첨부한 원본은 로컬에 안전 보관되며, 이 에스크로의 당사자만 열람할 수 있습니다.",
+                        "Only the keccak256 hash is anchored on-chain (tamper-proof); the file itself is never uploaded to the public chain. Attached originals are stored locally and viewable only by parties to this escrow."
+                      )}
+                    </p>
                   </div>
                 )}
               </div>

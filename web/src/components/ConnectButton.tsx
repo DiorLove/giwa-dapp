@@ -5,6 +5,7 @@ import { giwaSepolia } from "@/lib/chain";
 import { shortAddr } from "@/lib/contracts";
 import { useLang } from "@/lib/i18n";
 import { WalletModal } from "@/components/WalletModal";
+import { AccountSheet } from "@/components/AccountSheet";
 
 export function ConnectButton() {
   const { t } = useLang();
@@ -12,6 +13,7 @@ export function ConnectButton() {
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
   const [modalOpen, setModalOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   // SSR과 클라이언트의 지갑 상태가 달라 생기는 하이드레이션 불일치 방지
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -45,12 +47,20 @@ export function ConnectButton() {
     );
 
   return (
-    <button
-      onClick={() => disconnect()}
-      className="liquid-glass glass-hover pressable rounded-full px-4 py-2 text-xs font-semibold text-white/70"
-      title={t("클릭하면 연결 해제", "Click to disconnect")}
-    >
-      {shortAddr(address!)}
-    </button>
+    <>
+      <button
+        onClick={() => setSheetOpen(true)}
+        className="liquid-glass glass-hover pressable rounded-full px-4 py-2 text-xs font-semibold text-white/70"
+        title={t("지갑 상세", "Wallet details")}
+      >
+        {shortAddr(address!)}
+      </button>
+      <AccountSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        address={address!}
+        onDisconnect={() => disconnect()}
+      />
+    </>
   );
 }
