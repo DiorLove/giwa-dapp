@@ -12,10 +12,12 @@ import {
 } from "@/lib/contracts";
 import { AppNav } from "@/components/AppNav";
 import { AnimatedNumber, FadeUp } from "@/components/Motion";
+import { useLang } from "@/lib/i18n";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
 export default function PoolPage() {
+  const { t } = useLang();
   const { address: me } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
@@ -66,12 +68,13 @@ export default function PoolPage() {
         <FadeUp className="pt-12 pb-10">
           <p className="mb-2 text-xs uppercase tracking-[0.2em] text-white/35">Bridge Pool</p>
           <h1 className="font-display text-4xl tracking-tight text-white md:text-5xl">
-            브리지 풀
+            {t("브리지 풀", "Bridge Pool")}
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/40">
-            이사 날짜 사이의 며칠을 잇는 초단기 유동성입니다. 다음 세입자의
-            전세금이 이미 온체인에 락된 거래에만 선지급하므로, 담보가 눈에
-            보이는 대출입니다. 선지급 수수료 0.5%가 예치자의 수익이 됩니다.
+            {t(
+              "이사 날짜 사이의 며칠을 잇는 초단기 유동성입니다. 다음 세입자의 전세금이 이미 온체인에 락된 거래에만 선지급하므로, 담보가 눈에 보이는 대출입니다. 선지급 수수료 0.5%가 예치자의 수익이 됩니다.",
+              "Ultra-short liquidity that links the days between moving dates. Advances go only to deals where the next tenant's deposit is already locked on-chain — lending with visible collateral. The 0.5% advance fee goes to depositors."
+            )}
           </p>
         </FadeUp>
 
@@ -80,9 +83,9 @@ export default function PoolPage() {
           className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.06] sm:grid-cols-3"
         >
           {[
-            { k: "풀 총자산", v: totalAssets },
-            { k: "선지급 중 (상환 예정)", v: outstanding },
-            { k: "내 예치 가치", v: myValue },
+            { k: t("풀 총자산", "Total Pool Assets"), v: totalAssets },
+            { k: t("선지급 중 (상환 예정)", "Advanced (Receivable)"), v: outstanding },
+            { k: t("내 예치 가치", "My Deposit Value"), v: myValue },
           ].map((s) => (
             <div key={s.k} className="bg-black p-6">
               <p className={label}>{s.k}</p>
@@ -98,9 +101,10 @@ export default function PoolPage() {
 
         <FadeUp delay={0.16} className="mt-14 grid grid-cols-1 gap-8 lg:grid-cols-2">
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8">
-            <p className={label}>예치</p>
+            <p className={label}>{t("예치", "Deposit")}</p>
             <p className="mt-2 text-sm text-white/40">
-              보유 mKRW: <span className="text-white/70 tabular-nums">{fmtKRW(myBalance)}</span>
+              {t("보유 mKRW:", "mKRW balance:")}{" "}
+              <span className="text-white/70 tabular-nums">{fmtKRW(myBalance)}</span>
             </p>
             <div className="relative mt-5">
               <input
@@ -143,15 +147,17 @@ export default function PoolPage() {
               }
               className="pressable mt-5 h-12 w-full rounded-full bg-white text-sm font-semibold text-black disabled:opacity-40"
             >
-              {busy === "deposit" ? "예치 중" : "풀에 예치"}
+              {busy === "deposit" ? t("예치 중", "Depositing") : t("풀에 예치", "Deposit to Pool")}
             </button>
           </div>
 
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8">
-            <p className={label}>출금</p>
+            <p className={label}>{t("출금", "Withdraw")}</p>
             <p className="mt-2 text-sm leading-relaxed text-white/40">
-              내 지분 전량을 현재 가치로 출금합니다. 선지급 중인 유동성은
-              정산이 끝나야 출금할 수 있습니다.
+              {t(
+                "내 지분 전량을 현재 가치로 출금합니다. 선지급 중인 유동성은 정산이 끝나야 출금할 수 있습니다.",
+                "Withdraw all your shares at current value. Liquidity out on advances becomes withdrawable after settlement."
+              )}
             </p>
             <p className="mt-5 text-2xl font-medium text-white tabular-nums">
               {fmtKRW(myValue)}
@@ -170,7 +176,7 @@ export default function PoolPage() {
               }
               className="pressable mt-5 h-12 w-full rounded-full border border-white/15 text-sm font-semibold text-white transition-colors hover:border-white/30 disabled:opacity-40"
             >
-              {busy === "withdraw" ? "출금 중" : "전량 출금"}
+              {busy === "withdraw" ? t("출금 중", "Withdrawing") : t("전량 출금", "Withdraw All")}
             </button>
           </div>
         </FadeUp>
