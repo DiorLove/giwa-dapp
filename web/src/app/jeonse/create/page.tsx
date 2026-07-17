@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { usePublicClient, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { parseUnits, decodeEventLog, isAddress } from "viem";
 import { JEONSE_FACTORY_ADDRESS, errMsg, jeonseFactoryAbi } from "@/lib/contracts";
 import { AppNav } from "@/components/AppNav";
@@ -12,6 +12,7 @@ export default function JeonseCreate() {
   const { t } = useLang();
   const router = useRouter();
   const publicClient = usePublicClient();
+  const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const [tenantIn, setTenantIn] = useState("");
   const [tenantOut, setTenantOut] = useState("");
@@ -22,13 +23,16 @@ export default function JeonseCreate() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const dateInFuture =
+    demo10min ||
+    (!!settleDate && new Date(settleDate).getTime() > Date.now() + 60_000);
   const valid =
     isAddress(tenantIn) &&
     isAddress(tenantOut) &&
     Number(jeonse) > 0 &&
     Number(refund) >= 0 &&
     Number(refund) <= Number(jeonse) &&
-    (demo10min || !!settleDate);
+    dateInFuture;
 
   async function create() {
     setBusy(true);
@@ -37,17 +41,36 @@ export default function JeonseCreate() {
       const ts = demo10min
         ? BigInt(Math.floor(Date.now() / 1000) + 600)
         : BigInt(Math.floor(new Date(settleDate).getTime() / 1000));
+      if (!demo10min && Number(ts) * 1000 <= Date.now() + 60_000) {
+        setError(
+          t(
+            "정산일이 과거이거나 너무 가깝습니다. 미래 시각을 선택해 주세요.",
+            "Settlement date is in the past or too soon. Pick a future time."
+          )
+        );
+        setBusy(false);
+        return;
+      }
+      const args = [
+        tenantIn as `0x${string}`,
+        tenantOut as `0x${string}`,
+        parseUnits(jeonse, 18),
+        parseUnits(refund, 18),
+        ts,
+      ] as const;
+      // 사전 시뮬레이션: 리버트 사유를 가스 오류 대신 그대로 노출
+      await publicClient!.simulateContract({
+        account: address,
+        address: JEONSE_FACTORY_ADDRESS,
+        abi: jeonseFactoryAbi,
+        functionName: "createEscrow",
+        args,
+      });
       const hash = await writeContractAsync({
         address: JEONSE_FACTORY_ADDRESS,
         abi: jeonseFactoryAbi,
         functionName: "createEscrow",
-        args: [
-          tenantIn as `0x${string}`,
-          tenantOut as `0x${string}`,
-          parseUnits(jeonse, 18),
-          parseUnits(refund, 18),
-          ts,
-        ],
+        args,
       });
       const receipt = await publicClient!.waitForTransactionReceipt({ hash });
       for (const log of receipt.logs) {
@@ -164,6 +187,14 @@ export default function JeonseCreate() {
                   className={`${input} sm:flex-1 ${demo10min ? "opacity-40" : ""}`}
                 />
               </div>
+              {!demo10min && settleDate && !dateInFuture && (
+                <span className="text-xs text-amber-300">
+                  {t(
+                    "정산일은 미래 시각이어야 합니다.",
+                    "Settlement date must be in the future."
+                  )}
+                </span>
+              )}
             </div>
             {error && (
               <p className="rounded-xl border border-red-400/20 bg-red-400/5 p-4 text-xs leading-relaxed break-words text-red-300">
