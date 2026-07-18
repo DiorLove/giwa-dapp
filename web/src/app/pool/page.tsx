@@ -115,8 +115,21 @@ export default function PoolPage() {
               <span className="ml-1 text-2xl text-emerald-300/80 md:text-3xl">%</span>
             </p>
             <p className="mt-1 text-xs text-white/35">
-              {t(`이용률 100% 기준 최대 ${maxApy.toFixed(1)}%`, `Up to ${maxApy.toFixed(1)}% at full utilization`)}
+              {utilization === 0
+                ? t(
+                    `지금은 선지급이 없어 0% · 이용률 100% 기준 최대 ${maxApy.toFixed(1)}%`,
+                    `0% until an advance is taken · up to ${maxApy.toFixed(1)}% at full utilization`
+                  )
+                : t(`이용률 100% 기준 최대 ${maxApy.toFixed(1)}%`, `Up to ${maxApy.toFixed(1)}% at full utilization`)}
             </p>
+            {utilization === 0 && (
+              <p className="mt-2 max-w-md text-[11px] leading-relaxed text-white/30">
+                {t(
+                  "APY는 예치액이 아니라 선지급 발생량으로 결정됩니다. 전세 거래에서 기존 세입자가 '보증금 미리 받기'를 실행하면 이용률과 APY가 올라갑니다.",
+                  "APY is driven by advance volume, not by deposits. When an outgoing tenant taps 'Get refund early' on a jeonse deal, utilization and APY rise."
+                )}
+              </p>
+            )}
           </div>
           <div className="w-full md:max-w-xs">
             <div className="mb-1.5 flex items-center justify-between text-xs">
