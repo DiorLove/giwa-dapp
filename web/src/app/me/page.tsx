@@ -294,6 +294,13 @@ export default function MyPage() {
     myCircles.reduce((a, c) => a + c.claimable, 0n) +
     myEscrows.reduce((a, e) => a + e.claimable, 0n);
 
+  // 수령 가능한 곳들 — 금액이 큰 순으로. 타일 클릭 시 가장 큰 곳으로 바로 이동.
+  const claimSources = [
+    ...myEscrows.filter((e) => e.claimable > 0n).map((e) => ({ href: `/jeonse/${e.addr}`, amt: e.claimable })),
+    ...myCircles.filter((c) => c.claimable > 0n).map((c) => ({ href: `/g/${c.addr}`, amt: c.claimable })),
+  ].sort((a, b) => (b.amt > a.amt ? 1 : b.amt < a.amt ? -1 : 0));
+  const claimTarget = claimSources[0]?.href;
+
   async function copy() {
     if (!address) return;
     await navigator.clipboard.writeText(address);
@@ -441,19 +448,36 @@ export default function MyPage() {
                   />
                 </p>
               </div>
-              <div className="bg-black p-5 md:p-6">
-                <p className={label}>{t("수령 가능", "Claimable")}</p>
-                <p
-                  className={`mt-2 text-xl font-medium tabular-nums md:text-2xl ${
-                    claimableTotal > 0n ? "text-emerald-300" : "text-white"
-                  }`}
+              {claimTarget && claimableTotal > 0n ? (
+                <Link
+                  href={claimTarget}
+                  className="group bg-black p-5 transition-colors hover:bg-emerald-400/[0.04] md:p-6"
                 >
-                  <AnimatedNumber
-                    value={Number(claimableTotal / 10n ** 18n)}
-                    format={(n) => "₩" + n.toLocaleString("ko-KR")}
-                  />
-                </p>
-              </div>
+                  <p className={`flex items-center justify-between ${label}`}>
+                    {t("수령 가능", "Claimable")}
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-300/80 transition-colors group-hover:text-emerald-300">
+                      {t("수령하러", "Claim")}
+                      <ArrowUpRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+                    </span>
+                  </p>
+                  <p className="mt-2 text-xl font-medium text-emerald-300 tabular-nums md:text-2xl">
+                    <AnimatedNumber
+                      value={Number(claimableTotal / 10n ** 18n)}
+                      format={(n) => "₩" + n.toLocaleString("ko-KR")}
+                    />
+                  </p>
+                </Link>
+              ) : (
+                <div className="bg-black p-5 md:p-6">
+                  <p className={label}>{t("수령 가능", "Claimable")}</p>
+                  <p className="mt-2 text-xl font-medium text-white tabular-nums md:text-2xl">
+                    <AnimatedNumber
+                      value={Number(claimableTotal / 10n ** 18n)}
+                      format={(n) => "₩" + n.toLocaleString("ko-KR")}
+                    />
+                  </p>
+                </div>
+              )}
             </FadeUp>
 
             {/* 빠른 작업 */}
