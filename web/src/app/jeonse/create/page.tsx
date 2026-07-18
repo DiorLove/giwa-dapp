@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ArrowUpRight, TrendingUp } from "lucide-react";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { parseUnits, decodeEventLog, isAddress } from "viem";
 import { JEONSE_FACTORY_ADDRESS, errMsg, jeonseFactoryAbi, onlyDigits, withCommas } from "@/lib/contracts";
@@ -94,7 +96,12 @@ export default function JeonseCreate() {
   const label = "text-xs uppercase tracking-[0.15em] text-white/35";
   const input =
     "h-12 w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 text-sm text-white outline-none transition-colors [color-scheme:dark] placeholder:text-white/25 focus:border-white/30";
-  const landlordDiff = Math.max(Number(jeonse || 0) - Number(refund || 0), 0);
+  const jeonseN = Number(jeonse || 0);
+  const refundN = Number(refund || 0);
+  const landlordDiff = Math.max(jeonseN - refundN, 0);
+  // 역전세: 반환할 기존 보증금이 신규 전세금보다 커서 집주인이 부족분을 메꿔야 하는 경우
+  const shortfall = Math.max(refundN - jeonseN, 0);
+  const isReverse = shortfall > 0;
 
   return (
     <div className="min-h-screen bg-black">
@@ -235,25 +242,61 @@ export default function JeonseCreate() {
                 </dd>
               </div>
               <div className="flex items-baseline justify-between">
-                <dt className="text-sm text-white/40">{t("집주인 차액 수령", "Landlord receives balance")}</dt>
-                <dd className="text-sm text-white/70 tabular-nums">
-                  ₩{landlordDiff.toLocaleString("ko-KR")}
+                <dt className="text-sm text-white/40">
+                  {isReverse ? t("집주인 부족분 (역전세)", "Landlord shortfall (reverse)") : t("집주인 차액 수령", "Landlord receives balance")}
+                </dt>
+                <dd className={`text-sm tabular-nums ${isReverse ? "text-amber-300" : "text-white/70"}`}>
+                  {isReverse ? "−" : ""}₩{(isReverse ? shortfall : landlordDiff).toLocaleString("ko-KR")}
                 </dd>
               </div>
             </dl>
-            <button
-              onClick={create}
-              disabled={busy || !valid}
-              className="pressable mt-6 h-12 w-full rounded-full bg-white text-sm font-semibold text-black disabled:opacity-40"
-            >
-              {busy ? t("개설 중", "Creating") : t("에스크로 개설", "Create Escrow")}
-            </button>
-            <p className="mt-4 text-xs leading-relaxed text-white/30">
-              {t(
-                "세 당사자의 몫은 정산일에 하나의 트랜잭션으로 동시에 확정됩니다. 돈이 사람 손을 거치지 않습니다.",
-                "All three parties' shares settle simultaneously in one transaction. Money never passes through human hands."
-              )}
-            </p>
+
+            {isReverse ? (
+              <>
+                {/* 역전세 안내: 부족분을 먼저 마련해야 에스크로 개설 가능 */}
+                <div className="mt-6 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] p-4">
+                  <p className="text-sm font-medium text-amber-200">
+                    {t("역전세예요 — 부족분을 먼저 마련하세요", "Reverse-jeonse — cover the shortfall first")}
+                  </p>
+                  <p className="mt-2 text-xs leading-relaxed text-white/50">
+                    {t(
+                      `반환할 보증금이 신규 전세금보다 ₩${shortfall.toLocaleString("ko-KR")} 큽니다. 에스크로는 반환금이 락 금액을 넘을 수 없어, 이대로는 개설되지 않아요. 부족분 ₩${shortfall.toLocaleString("ko-KR")}을 이음 Earn에서 담보 대출로 마련해 채운 뒤 개설하세요.`,
+                      `The refund exceeds the new deposit by ₩${shortfall.toLocaleString("ko-KR")}. An escrow can't refund more than is locked, so it won't open as-is. Borrow the ₩${shortfall.toLocaleString("ko-KR")} shortfall from IEUM Earn against collateral, top it up, then open.`
+                    )}
+                  </p>
+                  <Link
+                    href="/earn"
+                    className="pressable mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-white text-sm font-semibold text-black"
+                  >
+                    <TrendingUp size={16} strokeWidth={1.8} />
+                    {t(`이음 Earn에서 ₩${shortfall.toLocaleString("ko-KR")} 대출받기`, `Borrow ₩${shortfall.toLocaleString("ko-KR")} on IEUM Earn`)}
+                    <ArrowUpRight size={15} strokeWidth={1.8} className="opacity-60" />
+                  </Link>
+                </div>
+                <p className="mt-4 text-xs leading-relaxed text-white/30">
+                  {t(
+                    "부족분을 마련해 신규 전세금을 반환금 이상으로 맞추면, 위 버튼이 개설 버튼으로 바뀝니다.",
+                    "Once you cover the shortfall so the new deposit ≥ the refund, this turns back into the create action."
+                  )}
+                </p>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={create}
+                  disabled={busy || !valid}
+                  className="pressable mt-6 h-12 w-full rounded-full bg-white text-sm font-semibold text-black disabled:opacity-40"
+                >
+                  {busy ? t("개설 중", "Creating") : t("에스크로 개설", "Create Escrow")}
+                </button>
+                <p className="mt-4 text-xs leading-relaxed text-white/30">
+                  {t(
+                    "세 당사자의 몫은 정산일에 하나의 트랜잭션으로 동시에 확정됩니다. 돈이 사람 손을 거치지 않습니다.",
+                    "All three parties' shares settle simultaneously in one transaction. Money never passes through human hands."
+                  )}
+                </p>
+              </>
+            )}
           </FadeUp>
         </div>
       </main>
