@@ -139,21 +139,24 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-black">
       <AppNav />
-      <main className="mx-auto max-w-5xl px-4 pb-28 md:px-6">
+      <main className="mx-auto max-w-6xl px-4 pb-28 md:px-6">
         {/* 헤더 */}
-        <FadeUp className="pt-14 pb-10 md:pt-20">
-          <p className={`mb-3 ${kicker}`}>IEUM Protocol</p>
-          <h1 className="font-display text-5xl tracking-tight text-white md:text-6xl">
+        <FadeUp className="pt-12 pb-8 md:pt-16">
+          <p className={`mb-2.5 ${kicker}`}>IEUM Protocol</p>
+          <h1 className="font-display text-4xl tracking-tight text-white md:text-5xl">
             {t("대시보드", "Dashboard")}
           </h1>
         </FadeUp>
 
-        {/* 총 예치 자산 — 명세서형 밴드 */}
-        <FadeUp delay={0.05} className="border-y border-white/[0.09] py-8 md:py-10">
+        {/* 총 예치 자산 — 박스 (기능 박스들과 폭·정렬 일치) */}
+        <FadeUp
+          delay={0.05}
+          className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8"
+        >
           <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
             <div>
               <p className={kicker}>{t("총 예치 자산", "Total Value Locked")}</p>
-              <p className="mt-3 font-display text-5xl tracking-tight text-white tabular-nums md:text-[4.25rem] md:leading-[1]">
+              <p className="mt-3 font-display text-5xl tracking-tight text-white tabular-nums md:text-[3.75rem] md:leading-[1]">
                 <AnimatedNumber
                   value={Number(tvl / 10n ** 18n)}
                   format={(n) => "₩" + n.toLocaleString("ko-KR")}
@@ -166,7 +169,6 @@ export default function Dashboard() {
                 )}
               </p>
             </div>
-            {/* 우측: 하이라인 구분 인라인 지표 (모바일은 3등분으로 균등 배치) */}
             <dl className="grid grid-cols-3 divide-x divide-white/[0.09] md:flex md:items-stretch">
               {[
                 { k: t("에스크로", "Escrows"), v: String(escrowCount), accent: false },
@@ -188,22 +190,23 @@ export default function Dashboard() {
           </div>
         </FadeUp>
 
-        {/* 기능 인덱스 */}
-        <FadeUp delay={0.12} className="mt-14">
-          <p className={`mb-5 ${kicker}`}>{t("기능", "Protocol")}</p>
-          <div className="grid grid-cols-1 border-t border-white/[0.09] md:grid-cols-2">
-            {features.map((f, i) => (
-              <Link
-                key={f.href}
-                href={f.href}
-                className="group flex flex-col gap-5 border-b border-white/[0.09] p-6 transition-colors hover:bg-white/[0.015] md:p-7 md:[&:nth-child(odd)]:border-r"
-              >
-                <div className="flex items-center justify-between">
+        {/* 기능 박스 */}
+        <FadeUp delay={0.12} className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+          {features.map((f, i) => (
+            <Link
+              key={f.href}
+              href={f.href}
+              className="group flex flex-col justify-between gap-6 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 transition-colors hover:border-white/20 hover:bg-white/[0.04] md:p-7"
+            >
+              <div>
+                <div className="mb-5 flex items-center justify-between">
                   <span className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/70">
+                      <f.icon size={18} strokeWidth={1.5} />
+                    </span>
                     <span className="font-mono text-xs text-white/25 tabular-nums">
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <f.icon size={16} className="text-white/40" strokeWidth={1.5} />
                   </span>
                   {f.tag && (
                     <span className="rounded-full border border-white/10 px-2.5 py-0.5 text-[10px] font-medium tabular-nums text-white/50">
@@ -211,66 +214,59 @@ export default function Dashboard() {
                     </span>
                   )}
                 </div>
-                <div>
-                  <h2 className="flex items-center gap-1.5 text-xl tracking-tight text-white">
-                    {f.title}
-                    <ArrowUpRight
-                      size={16}
-                      strokeWidth={1.5}
-                      className="text-white/20 transition-all group-hover:translate-x-0.5 group-hover:text-white/60"
-                    />
-                  </h2>
-                  <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/40">{f.desc}</p>
-                </div>
-                <p className="mt-auto text-xs text-white/35 tabular-nums">{f.stat}</p>
-              </Link>
-            ))}
-          </div>
+                <h2 className="flex items-center gap-1.5 text-lg tracking-tight text-white">
+                  {f.title}
+                  <ArrowUpRight
+                    size={16}
+                    strokeWidth={1.5}
+                    className="text-white/20 transition-all group-hover:translate-x-0.5 group-hover:text-white/60"
+                  />
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-white/40">{f.desc}</p>
+              </div>
+              <p className="border-t border-white/[0.06] pt-4 text-xs text-white/40 tabular-nums">
+                {f.stat}
+              </p>
+            </Link>
+          ))}
         </FadeUp>
 
         {/* 빠른 작업 */}
-        <FadeUp delay={0.18} className="mt-12">
-          <p className={`mb-4 ${kicker}`}>{t("바로가기", "Quick actions")}</p>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-            {quick.map((q) => (
-              <Link
-                key={q.href}
-                href={q.href}
-                className="group inline-flex items-center gap-1.5 text-sm text-white/70 transition-colors hover:text-white"
-              >
-                {q.label}
-                <ArrowUpRight
-                  size={14}
-                  strokeWidth={1.5}
-                  className="text-white/25 transition-all group-hover:translate-x-0.5 group-hover:text-white/60"
-                />
-              </Link>
-            ))}
-            {mounted && address ? (
-              <button
-                disabled={minting}
-                onClick={() =>
-                  writeContract(
-                    { address: MOCKKRW_ADDRESS, abi: mockKrwAbi, functionName: "faucet" },
-                    { onSuccess: () => setTimeout(() => refetch(), 2000) }
-                  )
-                }
-                className="inline-flex items-center gap-1.5 text-sm text-white/70 transition-colors hover:text-white disabled:opacity-40"
-              >
-                {minting ? t("발급 중…", "Minting…") : t("테스트 원화 발급", "Mint test KRW")}
-              </button>
-            ) : (
-              <a
-                href="https://faucet.giwa.io"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm text-white/70 transition-colors hover:text-white"
-              >
-                {t("가스 받기", "Get gas")}
-                <ArrowUpRight size={14} strokeWidth={1.5} className="text-white/25" />
-              </a>
-            )}
-          </div>
+        <FadeUp delay={0.18} className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {quick.map((q) => (
+            <Link
+              key={q.href}
+              href={q.href}
+              className="pressable flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3.5 text-sm font-medium text-white/80 transition-colors hover:border-white/20 hover:text-white"
+            >
+              <span className="truncate">{q.label}</span>
+              <ArrowUpRight size={14} strokeWidth={1.5} className="shrink-0 text-white/30" />
+            </Link>
+          ))}
+          {mounted && address ? (
+            <button
+              disabled={minting}
+              onClick={() =>
+                writeContract(
+                  { address: MOCKKRW_ADDRESS, abi: mockKrwAbi, functionName: "faucet" },
+                  { onSuccess: () => setTimeout(() => refetch(), 2000) }
+                )
+              }
+              className="pressable flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3.5 text-sm font-medium text-white/80 transition-colors hover:border-white/20 hover:text-white disabled:opacity-40"
+            >
+              <span className="truncate">{minting ? t("발급 중…", "Minting…") : t("테스트 원화 발급", "Mint KRW")}</span>
+            </button>
+          ) : (
+            <a
+              href="https://faucet.giwa.io"
+              target="_blank"
+              rel="noreferrer"
+              className="pressable flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3.5 text-sm font-medium text-white/80 transition-colors hover:border-white/20 hover:text-white"
+            >
+              <span className="truncate">{t("가스 받기", "Get gas")}</span>
+              <ArrowUpRight size={14} strokeWidth={1.5} className="shrink-0 text-white/30" />
+            </a>
+          )}
         </FadeUp>
 
         <p className="mt-16 border-t border-white/[0.06] pt-6 text-xs leading-relaxed text-white/25">

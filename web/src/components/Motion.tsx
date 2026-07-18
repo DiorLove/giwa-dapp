@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useSpring, useTransform } from "framer-motion";
 
 export const EASE = [0.23, 1, 0.32, 1] as const;
@@ -43,8 +43,16 @@ export function AnimatedNumber({
 }) {
   const spring = useSpring(value, { stiffness: 90, damping: 24 });
   const display = useTransform(spring, (v) => format(Math.round(v)));
+  const prev = useRef<number | null>(null);
   useEffect(() => {
-    spring.set(value);
+    // 최초 표시값이나 0에서 올라오는 값은 애니메이션 없이 즉시 스냅한다.
+    // (데이터 로드/리페치 때 0→수백만 롤업이 '잠깐 줄었다 늘어나는' 착시를 만드는 것을 방지)
+    if (prev.current === null || prev.current === 0) {
+      spring.jump(value);
+    } else {
+      spring.set(value);
+    }
+    prev.current = value;
   }, [value, spring]);
   return <motion.span>{display}</motion.span>;
 }
