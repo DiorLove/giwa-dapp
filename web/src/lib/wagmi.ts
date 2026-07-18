@@ -2,7 +2,9 @@ import { http, createConfig } from "wagmi";
 import { injected, metaMask, walletConnect } from "wagmi/connectors";
 import { giwaSepolia } from "./chain";
 
-const wcProjectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID;
+// WalletConnect projectId — 공개 값(프론트 노출용). env 로 덮어쓸 수 있음
+const wcProjectId =
+  process.env.NEXT_PUBLIC_WC_PROJECT_ID || "a18211f380cf7e23ffa4a687e12c0e57";
 
 export const config = createConfig({
   chains: [giwaSepolia],
