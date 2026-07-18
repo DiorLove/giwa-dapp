@@ -1,20 +1,23 @@
 "use client";
 import Link from "next/link";
 import { useAccount, useReadContract, useReadContracts, useWriteContract } from "wagmi";
-import { ArrowUpRight, FileText, Landmark, User, Users } from "lucide-react";
+import { ArrowUpRight, FileText, Landmark, TrendingUp, User, Users } from "lucide-react";
 import {
   BRIDGE_POOL_ADDRESS,
+  EARN_ADDRESS,
   FACTORY_ADDRESS,
   JEONSE_FACTORY_ADDRESS,
   LEGACY_FACTORY_ADDRESS,
   LEGACY_JEONSE_FACTORY_ADDRESS,
   MOCKKRW_ADDRESS,
   bridgePoolAbi,
+  earnAbi,
   factoryAbi,
   fmtKRW,
   jeonseAbi,
   jeonseFactoryAbi,
   mockKrwAbi,
+  rayToApy,
 } from "@/lib/contracts";
 import { AppNav } from "@/components/AppNav";
 import { AnimatedNumber, FadeUp, useMounted } from "@/components/Motion";
@@ -36,6 +39,8 @@ export default function Dashboard() {
       { address: LEGACY_FACTORY_ADDRESS, abi: factoryAbi, functionName: "getAll" },
       { address: BRIDGE_POOL_ADDRESS, abi: bridgePoolAbi, functionName: "totalAssets" },
       { address: BRIDGE_POOL_ADDRESS, abi: bridgePoolAbi, functionName: "totalOutstanding" },
+      { address: EARN_ADDRESS, abi: earnAbi, functionName: "supplyRatePerYear" },
+      { address: EARN_ADDRESS, abi: earnAbi, functionName: "totalAssets" },
     ],
     query: { refetchInterval: 6000 },
   });
@@ -58,6 +63,8 @@ export default function Dashboard() {
     ((stats?.[3]?.result as unknown[] | undefined)?.length ?? 0);
   const poolAssets = (stats?.[4]?.result as bigint | undefined) ?? 0n;
   const poolOutstanding = (stats?.[5]?.result as bigint | undefined) ?? 0n;
+  const earnApy = rayToApy((stats?.[6]?.result as bigint | undefined) ?? 0n);
+  const earnSupplied = (stats?.[7]?.result as bigint | undefined) ?? 0n;
   const myBalance = (balance as bigint | undefined) ?? 0n;
 
   const { data: escInfos } = useReadContracts({
@@ -72,7 +79,7 @@ export default function Dashboard() {
     const amt = escInfos?.[i * 2 + 1]?.result as bigint | undefined;
     return st === 1 ? acc + (amt ?? 0n) : acc;
   }, 0n);
-  const tvl = poolAssets + lockedEscrow;
+  const tvl = poolAssets + lockedEscrow + earnSupplied;
 
   const utilization =
     poolAssets > 0n ? Number((poolOutstanding * 1_000_000n) / poolAssets) / 1_000_000 : 0;
@@ -89,6 +96,17 @@ export default function Dashboard() {
         "Lock the incoming deposit; refund and balance settle together in one transaction."
       ),
       stat: t(`${escrowCount}건 · 락 ${fmtKRW(lockedEscrow)}`, `${escrowCount} deals · ${fmtKRW(lockedEscrow)} locked`),
+    },
+    {
+      href: "/earn",
+      icon: TrendingUp,
+      tag: `APY ${earnApy.toFixed(1)}%`,
+      title: t("이음 Earn", "IEUM Earn"),
+      desc: t(
+        "mKRW를 예치해 대출 이자로 실질 연이자를 받고, mETH 담보로 대출받습니다. 역전세 부족분 조달과 이음 수익의 핵심.",
+        "Supply mKRW for real yield from borrower interest; borrow against mETH collateral. Core of reverse-jeonse loans and protocol revenue."
+      ),
+      stat: t(`예치 APY ${earnApy.toFixed(2)}% · 예치 ${fmtKRW(earnSupplied)}`, `${earnApy.toFixed(2)}% APY · ${fmtKRW(earnSupplied)} supplied`),
     },
     {
       href: "/pool",

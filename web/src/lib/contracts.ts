@@ -15,6 +15,14 @@ export const LEGACY_FACTORY_ADDRESS =
 export const LEGACY_JEONSE_FACTORY_ADDRESS =
   "0x5622e3B98c04507E2185667131C75344Fe077012" as `0x${string}`;
 
+// 이음 Earn 머니마켓 (Aave-lite) — GIWA Sepolia 배포 (Verified)
+export const EARN_ADDRESS =
+  "0x9f83ff17ee849c9ABEf0c6aA1EA111E76De5ba80" as `0x${string}`;
+export const METH_ADDRESS =
+  "0x9AaB1E96a0E800beA9E1dC2aBc0378067b375296" as `0x${string}`;
+export const ORACLE_ADDRESS =
+  "0x5473209D28849b78262455988a609c0bDA0332B5" as `0x${string}`;
+
 export const mockKrwAbi = parseAbi([
   "function faucet()",
   "function balanceOf(address) view returns (uint256)",
@@ -99,6 +107,46 @@ export const bridgePoolAbi = parseAbi([
   "function totalAssets() view returns (uint256)",
   "function FEE_BPS() view returns (uint256)",
 ]);
+
+export const earnAbi = parseAbi([
+  "function supply(uint256 amount)",
+  "function withdraw(uint256 shareAmount)",
+  "function depositCollateral(uint256 amount)",
+  "function withdrawCollateral(uint256 amount)",
+  "function borrow(uint256 amount)",
+  "function repay(uint256 amount)",
+  "function liquidate(address user, uint256 repayAmount)",
+  "function cash() view returns (uint256)",
+  "function totalBorrows() view returns (uint256)",
+  "function totalAssets() view returns (uint256)",
+  "function totalSupplyShares() view returns (uint256)",
+  "function reserveAccrued() view returns (uint256)",
+  "function utilization() view returns (uint256)",
+  "function borrowRatePerYear() view returns (uint256)",
+  "function supplyRatePerYear() view returns (uint256)",
+  "function supplyShares(address) view returns (uint256)",
+  "function supplyValue(address) view returns (uint256)",
+  "function debtOf(address) view returns (uint256)",
+  "function collateralOf(address) view returns (uint256)",
+  "function collateralValue(address) view returns (uint256)",
+  "function maxBorrow(address) view returns (uint256)",
+  "function healthFactor(address) view returns (uint256)",
+  "function ltv() view returns (uint256)",
+  "function liquidationThreshold() view returns (uint256)",
+]);
+
+export const mockEthAbi = parseAbi([
+  "function faucet()",
+  "function balanceOf(address) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+]);
+
+export const oracleAbi = parseAbi(["function price() view returns (uint256)"]);
+
+/** ray(1e27) 연이율 → APY 퍼센트 문자열 */
+export const rayToApy = (ray: bigint) =>
+  (Number(ray / 10n ** 21n) / 1e6) * 100; // ray/1e27 * 100
 
 export const fmtKRW = (wei: bigint) =>
   "₩" + (wei / 10n ** 18n).toLocaleString("ko-KR");
