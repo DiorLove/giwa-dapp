@@ -14,6 +14,10 @@ body {
     "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
     "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
   -webkit-tap-highlight-color: transparent;
+  /* 모바일 축소(핀치 줌 아웃) 시 오른쪽 여백/가로 스크롤 방지.
+     clip 은 sticky 헤더를 깨뜨리지 않는다. */
+  overflow-x: clip;
+  max-width: 100%;
 }
 
 .font-display {

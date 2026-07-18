@@ -113,6 +113,7 @@ export default function JeonseDetail({ params }: { params: Promise<{ address: st
       { address: esc, abi: jeonseAbi, functionName: "claimable", args: [me ?? ZERO] },
       { address: esc, abi: jeonseAbi, functionName: "documentCount" },
       { address: esc, abi: jeonseAbi, functionName: "cancelApproved", args: [me ?? ZERO] },
+      { address: esc, abi: jeonseAbi, functionName: "bridgePool" },
     ],
     query: { refetchInterval: 4000 },
   });
@@ -128,6 +129,8 @@ export default function JeonseDetail({ params }: { params: Promise<{ address: st
   const claimable = (data?.[8]?.result as bigint | undefined) ?? 0n;
   const docCount = Number((data?.[9]?.result as bigint | undefined) ?? 0n);
   const iApprovedCancel = data?.[10]?.result as boolean | undefined;
+  // 이 에스크로가 실제로 가리키는 브리지 풀 (신규=IeumEarn, 구=BridgePool)
+  const escrowPool = (data?.[11]?.result as `0x${string}` | undefined) ?? BRIDGE_POOL_ADDRESS;
 
   const docsQuery = useReadContracts({
     contracts: Array.from({ length: docCount }, (_, i) => ({
@@ -560,14 +563,18 @@ export default function JeonseDetail({ params }: { params: Promise<{ address: st
                     disabled={!!busy}
                     className={`${primaryBtn} bg-sky-400 text-black`}
                     onClick={() =>
-                      run("bridge", () =>
-                        writeContractAsync({
-                          address: BRIDGE_POOL_ADDRESS,
+                      run("bridge", async () => {
+                        // 에스크로가 가리키는 풀로 선지급 요청 (신규=IeumEarn, 구=BridgePool).
+                        // 전송 전 시뮬레이션으로 리버트 사유 노출 + 정확한 가스 (GIWA 'gas limit too high' 방지)
+                        const { request } = await publicClient!.simulateContract({
+                          account: me,
+                          address: escrowPool,
                           abi: bridgePoolAbi,
                           functionName: "bridge",
                           args: [esc],
-                        })
-                      )
+                        });
+                        return writeContractAsync(request);
+                      })
                     }
                   >
                     {busy === "bridge"

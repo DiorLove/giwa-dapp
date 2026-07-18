@@ -12,7 +12,6 @@ import { LangToggle, useLang } from "@/lib/i18n";
 const LINKS: { href: string; label: [string, string]; tour: string }[] = [
   { href: "/jeonse", label: ["전세 에스크로", "Jeonse Escrow"], tour: "nav-jeonse" },
   { href: "/earn", label: ["이음 Earn", "Earn"], tour: "nav-earn" },
-  { href: "/pool", label: ["브리지 풀", "Bridge Pool"], tour: "nav-pool" },
   { href: "/app", label: ["계모임", "Gye Circles"], tour: "nav-gye" },
 ];
 

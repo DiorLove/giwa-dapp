@@ -53,6 +53,7 @@ export default function EarnPage() {
       { address: MOCKKRW_ADDRESS, abi: mockKrwAbi, functionName: "balanceOf", args: [me ?? ZERO] },
       { address: METH_ADDRESS, abi: mockEthAbi, functionName: "balanceOf", args: [me ?? ZERO] },
       { address: ORACLE_ADDRESS, abi: oracleAbi, functionName: "price" },
+      { address: EARN_ADDRESS, abi: earnAbi, functionName: "cash" },
     ],
     query: { refetchInterval: 5000 },
   });
@@ -72,6 +73,10 @@ export default function EarnPage() {
   const krwBal = (data?.[12]?.result as bigint | undefined) ?? 0n;
   const ethBal = (data?.[13]?.result as bigint | undefined) ?? 0n;
   const price = (data?.[14]?.result as bigint | undefined) ?? 0n;
+  const cashAvail = (data?.[15]?.result as bigint | undefined) ?? 0n;
+  // 실제 대출 가능액 = min(담보 LTV 한도, 풀 현금)
+  const borrowable = myMaxBorrow < cashAvail ? myMaxBorrow : cashAvail;
+  const cashLimited = cashAvail < myMaxBorrow;
 
   const hfNum = myDebt === 0n ? Infinity : Number(myHf) / 1e18;
   const hfLabel = myDebt === 0n ? "—" : hfNum.toFixed(2);
@@ -108,6 +113,19 @@ export default function EarnPage() {
       });
       await publicClient!.waitForTransactionReceipt({ hash: h });
     }
+  }
+
+  /** 전송 전 시뮬레이션 → 리버트 사유를 그대로 노출하고, 정확한 가스로 전송
+   *  (GIWA RPC의 'gas limit too high' 방지) */
+  async function send(functionName: string, args: readonly unknown[]) {
+    const { request } = await publicClient!.simulateContract({
+      account: me!,
+      address: EARN_ADDRESS,
+      abi: earnAbi,
+      functionName: functionName as never,
+      args: args as never,
+    });
+    return writeContractAsync(request as never);
   }
 
   const label = "text-xs uppercase tracking-[0.15em] text-white/35";
@@ -264,7 +282,7 @@ export default function EarnPage() {
                   run("supply", async () => {
                     const amt = parseUnits(supplyAmt || "0", 18);
                     await ensureAllowance(MOCKKRW_ADDRESS, mockKrwAbi, amt);
-                    return writeContractAsync({ address: EARN_ADDRESS, abi: earnAbi, functionName: "supply", args: [amt] });
+                    return send("supply", [amt]);
                   })
                 }
                 className={primary}
@@ -275,7 +293,7 @@ export default function EarnPage() {
                 disabled={!!busy || myShares === 0n}
                 onClick={() =>
                   run("withdraw", () =>
-                    writeContractAsync({ address: EARN_ADDRESS, abi: earnAbi, functionName: "withdraw", args: [myShares] })
+                    send("withdraw", [myShares])
                   )
                 }
                 className={ghost}
@@ -317,7 +335,7 @@ export default function EarnPage() {
                   run("coll", async () => {
                     const amt = parseUnits(collAmt || "0", 18);
                     await ensureAllowance(METH_ADDRESS, mockKrwAbi, amt);
-                    return writeContractAsync({ address: EARN_ADDRESS, abi: earnAbi, functionName: "depositCollateral", args: [amt] });
+                    return send("depositCollateral", [amt]);
                   })
                 }
                 className={primary}
@@ -327,14 +345,7 @@ export default function EarnPage() {
               <button
                 disabled={!!busy || myColl === 0n}
                 onClick={() =>
-                  run("collw", () =>
-                    writeContractAsync({
-                      address: EARN_ADDRESS,
-                      abi: earnAbi,
-                      functionName: "withdrawCollateral",
-                      args: [parseUnits(collAmt || "0", 18)],
-                    })
-                  )
+                  run("collw", () => send("withdrawCollateral", [parseUnits(collAmt || "0", 18)]))
                 }
                 className={ghost}
               >
@@ -353,7 +364,12 @@ export default function EarnPage() {
             </div>
             <p className="mt-2 text-sm text-white/40">
               {t("대출 가능:", "Available:")}{" "}
-              <span className="text-white/70 tabular-nums">{fmtKRW(myMaxBorrow)}</span>
+              <span className="text-white/70 tabular-nums">{fmtKRW(borrowable)}</span>
+              {cashLimited && (
+                <span className="ml-1 text-[11px] text-white/30">
+                  {t("(풀 유동성 한도)", "(pool liquidity cap)")}
+                </span>
+              )}
               {myDebt > 0n && (
                 <>
                   {" · "}
@@ -378,16 +394,7 @@ export default function EarnPage() {
               <div className="flex gap-2">
                 <button
                   disabled={!!busy || !me || Number(borrowAmt) <= 0}
-                  onClick={() =>
-                    run("borrow", () =>
-                      writeContractAsync({
-                        address: EARN_ADDRESS,
-                        abi: earnAbi,
-                        functionName: "borrow",
-                        args: [parseUnits(borrowAmt || "0", 18)],
-                      })
-                    )
-                  }
+                  onClick={() => run("borrow", () => send("borrow", [parseUnits(borrowAmt || "0", 18)]))}
                   className={primary}
                 >
                   {busy === "borrow" ? t("대출 중", "Borrowing") : t("대출", "Borrow")}
@@ -397,12 +404,7 @@ export default function EarnPage() {
                   onClick={() =>
                     run("repay", async () => {
                       await ensureAllowance(MOCKKRW_ADDRESS, mockKrwAbi, maxUint256);
-                      return writeContractAsync({
-                        address: EARN_ADDRESS,
-                        abi: earnAbi,
-                        functionName: "repay",
-                        args: [maxUint256],
-                      });
+                      return send("repay", [maxUint256]);
                     })
                   }
                   className={ghost}

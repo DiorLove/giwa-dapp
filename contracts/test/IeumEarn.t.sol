@@ -7,6 +7,7 @@ import {MockKRW} from "../src/MockKRW.sol";
 import {MockETH} from "../src/MockETH.sol";
 import {PriceOracle} from "../src/PriceOracle.sol";
 import {IeumEarn, IPriceOracle} from "../src/IeumEarn.sol";
+import {JeonseEscrow} from "../src/JeonseEscrow.sol";
 
 contract IeumEarnTest is Test {
     MockKRW krw;
@@ -218,6 +219,45 @@ contract IeumEarnTest is Test {
         earn.claimFees();
         assertEq(krw.balanceOf(treasury), accrued);
         assertEq(earn.reserveAccrued(), 0);
+    }
+
+    // ── 브리지 선지급이 같은 풀 유동성으로 동작 + 수수료가 예치자·트레저리로 ──
+    function test_BridgeThroughEarnPool() public {
+        _supply(lp, 20_000_000e18);
+        address landlord = makeAddr("landlord");
+        address tin = makeAddr("tin");
+        address tout = makeAddr("tout");
+        uint256 jeonse = 10_000_000e18;
+        uint256 refund = 10_000_000e18;
+        uint256 settleDate = block.timestamp + 7 days;
+
+        JeonseEscrow esc = new JeonseEscrow(
+            IERC20(address(krw)), address(earn), landlord, tin, tout, jeonse, refund, settleDate, treasury, 5
+        );
+        _fundKrw(tin, jeonse);
+        vm.startPrank(tin);
+        krw.approve(address(esc), jeonse);
+        esc.fund();
+        vm.stopPrank();
+
+        uint256 valueBefore = earn.supplyValue(lp);
+        uint256 fee = (refund * 50) / 10000; // 0.5% = 50,000e18
+
+        vm.prank(tout);
+        earn.bridge(address(esc));
+
+        assertEq(krw.balanceOf(tout), refund - fee, "advance = refund - fee");
+        assertEq(earn.bridgeOutstanding(), refund);
+        assertGt(earn.utilization(), 0, "bridge counts as utilization");
+        // 예치자 자산 += 수수료 - 프로토콜 몫
+        assertApproxEqAbs(earn.supplyValue(lp) - valueBefore, fee - (fee * 1000) / 10000, 2);
+        assertEq(earn.reserveAccrued(), (fee * 1000) / 10000, "protocol cut of bridge fee");
+
+        // 정산 → 상환 콜백으로 채권 소멸
+        vm.warp(settleDate);
+        esc.settle();
+        assertEq(earn.bridgeOutstanding(), 0, "repaid");
+        assertEq(earn.bridgeDebt(address(esc)), 0);
     }
 
     // ── 출금: 유동성이 대출로 나가 있으면 제한 ──

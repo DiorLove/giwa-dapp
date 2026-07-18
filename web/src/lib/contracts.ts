@@ -2,8 +2,9 @@ import { parseAbi } from "viem";
 
 export const MOCKKRW_ADDRESS = process.env.NEXT_PUBLIC_MOCKKRW_ADDRESS as `0x${string}`;
 export const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_FACTORY_ADDRESS as `0x${string}`;
-export const JEONSE_FACTORY_ADDRESS = process.env
-  .NEXT_PUBLIC_JEONSE_FACTORY_ADDRESS as `0x${string}`;
+// 통합본: 신규 에스크로는 IeumEarn 을 브리지 풀로 사용
+export const JEONSE_FACTORY_ADDRESS =
+  "0xD4dD00DB42051B50c4d9a423df8a4EB62C59204D" as `0x${string}`;
 export const BRIDGE_POOL_ADDRESS = process.env
   .NEXT_PUBLIC_BRIDGE_POOL_ADDRESS as `0x${string}`;
 
@@ -14,10 +15,13 @@ export const LEGACY_FACTORY_ADDRESS =
   "0x9CB12AD424Ffd1F0349a338631166E087a3dDF70" as `0x${string}`;
 export const LEGACY_JEONSE_FACTORY_ADDRESS =
   "0x5622e3B98c04507E2185667131C75344Fe077012" as `0x${string}`;
+// 직전 팩토리(구 BridgePool 사용) — 기존 에스크로 보존용으로 목록에 병합
+export const LEGACY_JEONSE_FACTORY_ADDRESS_2 =
+  "0xeec2bc9B6B9E281b2FafDEB38D40719547a95eC2" as `0x${string}`;
 
-// 이음 Earn 머니마켓 (Aave-lite) — GIWA Sepolia 배포 (Verified)
+// 이음 Earn 통합 머니마켓 (예치·대출 + 브리지 선지급) — GIWA Sepolia v2
 export const EARN_ADDRESS =
-  "0x9f83ff17ee849c9ABEf0c6aA1EA111E76De5ba80" as `0x${string}`;
+  "0x9B0363Ea96b39749f17e95FB99Eb3730338A3875" as `0x${string}`;
 export const METH_ADDRESS =
   "0x9AaB1E96a0E800beA9E1dC2aBc0378067b375296" as `0x${string}`;
 export const ORACLE_ADDRESS =
@@ -79,6 +83,7 @@ export const jeonseFactoryAbi = parseAbi([
 
 export const jeonseAbi = parseAbi([
   "function state() view returns (uint8)",
+  "function bridgePool() view returns (address)",
   "function landlord() view returns (address)",
   "function tenantIn() view returns (address)",
   "function tenantOut() view returns (address)",
@@ -116,8 +121,10 @@ export const earnAbi = parseAbi([
   "function borrow(uint256 amount)",
   "function repay(uint256 amount)",
   "function liquidate(address user, uint256 repayAmount)",
+  "function bridge(address escrow)",
   "function cash() view returns (uint256)",
   "function totalBorrows() view returns (uint256)",
+  "function bridgeOutstanding() view returns (uint256)",
   "function totalAssets() view returns (uint256)",
   "function totalSupplyShares() view returns (uint256)",
   "function reserveAccrued() view returns (uint256)",

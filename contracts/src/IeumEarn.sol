@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {JeonseEscrow} from "./JeonseEscrow.sol";
 
 interface IPriceOracle {
     function price() external view returns (uint256); // 담보 1개(1e18)당 자산 가격 (1e18)
@@ -53,6 +54,11 @@ contract IeumEarn {
     uint256 public reserveAccrued; // 프로토콜 적립 이자 (예치자 자산에서 제외)
     uint256 public lastAccrual;
 
+    // ── 브리지 선지급 (전세 에스크로 연계) — 같은 유동성으로 무이자·수수료 방식 단기 선지급 ──
+    uint256 public constant BRIDGE_FEE_BPS = 50; // 선지급 수수료 0.5%
+    uint256 public bridgeOutstanding; // 상환 예정 브리지 원금 합계
+    mapping(address => uint256) public bridgeDebt; // escrow => 상환 예정액
+
     event Supplied(address indexed user, uint256 amount, uint256 shares);
     event Withdrawn(address indexed user, uint256 amount, uint256 shares);
     event CollateralDeposited(address indexed user, uint256 amount);
@@ -61,6 +67,8 @@ contract IeumEarn {
     event Repaid(address indexed user, uint256 amount);
     event Liquidated(address indexed user, address indexed liquidator, uint256 repaid, uint256 seized);
     event FeesClaimed(uint256 amount);
+    event BridgeAdvanced(address indexed escrow, address indexed tenantOut, uint256 advanced, uint256 fee);
+    event BridgeRepaid(address indexed escrow, uint256 amount);
 
     constructor(
         IERC20 _asset,
@@ -108,17 +116,17 @@ contract IeumEarn {
         return (borrowScaled[user] * borrowIndex) / RAY;
     }
 
-    /// 예치자 총자산 = 현금 + 총부채 - 프로토콜 적립분
+    /// 예치자 총자산 = 현금 + 대출채권 + 브리지채권 - 프로토콜 적립분
     function totalAssets() public view returns (uint256) {
-        return cash() + totalBorrows() - reserveAccrued;
+        return cash() + totalBorrows() + bridgeOutstanding - reserveAccrued;
     }
 
-    /// 이용률 U = 총부채 / (현금 + 총부채) (ray)
+    /// 이용률 U = (대출 + 브리지 선지급) / (현금 + 대출 + 브리지) (ray)
     function utilization() public view returns (uint256 u) {
-        uint256 b = totalBorrows();
-        uint256 denom = cash() + b;
+        uint256 out = totalBorrows() + bridgeOutstanding;
+        uint256 denom = cash() + out;
         if (denom == 0) return 0;
-        u = (b * RAY) / denom;
+        u = (out * RAY) / denom;
         if (u > RAY) u = RAY;
     }
 
@@ -272,6 +280,40 @@ contract IeumEarn {
         asset.safeTransferFrom(msg.sender, address(this), repayAmount);
         collateral.safeTransfer(msg.sender, seize);
         emit Liquidated(user, msg.sender, repayAmount, seize);
+    }
+
+    // ───────────────────────── 브리지 선지급 (전세 연계) ─────────────────────────
+
+    /// 기존 세입자(A)가 선지급 요청. 다음 세입자의 전세금이 이미 락된 에스크로에만 나간다.
+    /// 같은 유동성을 쓰므로 예치자는 대출 이자 + 브리지 수수료를 함께 받는다.
+    function bridge(address escrowAddr) external {
+        JeonseEscrow esc = JeonseEscrow(escrowAddr);
+        require(esc.bridgePool() == address(this), "wrong pool");
+        require(esc.state() == JeonseEscrow.State.Funded, "escrow not funded");
+        require(msg.sender == esc.tenantOut(), "not tenantOut");
+        require(!esc.bridged(), "already bridged");
+
+        uint256 refund = esc.refundAmount();
+        uint256 fee = (refund * BRIDGE_FEE_BPS) / BPS;
+        uint256 advance = refund - fee;
+        require(cash() >= advance, "insufficient liquidity");
+
+        esc.registerBridge();
+        bridgeDebt[escrowAddr] = refund;
+        bridgeOutstanding += refund;
+        // 수수료 중 프로토콜 몫 적립, 나머지는 예치자 자산으로 귀속
+        reserveAccrued += (fee * reserveFactor) / BPS;
+        asset.safeTransfer(msg.sender, advance);
+        emit BridgeAdvanced(escrowAddr, msg.sender, advance, fee);
+    }
+
+    /// 에스크로 정산 콜백 — 상환 예정 채권 소멸 (토큰은 settle 이 이미 전송)
+    function onRepaid() external {
+        uint256 debt = bridgeDebt[msg.sender];
+        require(debt > 0, "no debt");
+        bridgeDebt[msg.sender] = 0;
+        bridgeOutstanding -= debt;
+        emit BridgeRepaid(msg.sender, debt);
     }
 
     // ───────────────────────── 프로토콜 수익 ─────────────────────────

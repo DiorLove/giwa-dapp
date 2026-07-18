@@ -9,6 +9,7 @@ import {
   JEONSE_FACTORY_ADDRESS,
   LEGACY_FACTORY_ADDRESS,
   LEGACY_JEONSE_FACTORY_ADDRESS,
+  LEGACY_JEONSE_FACTORY_ADDRESS_2,
   MOCKKRW_ADDRESS,
   bridgePoolAbi,
   earnAbi,
@@ -41,6 +42,7 @@ export default function Dashboard() {
       { address: BRIDGE_POOL_ADDRESS, abi: bridgePoolAbi, functionName: "totalOutstanding" },
       { address: EARN_ADDRESS, abi: earnAbi, functionName: "supplyRatePerYear" },
       { address: EARN_ADDRESS, abi: earnAbi, functionName: "totalAssets" },
+      { address: LEGACY_JEONSE_FACTORY_ADDRESS_2, abi: jeonseFactoryAbi, functionName: "getAll" },
     ],
     query: { refetchInterval: 6000 },
   });
@@ -55,6 +57,7 @@ export default function Dashboard() {
 
   const escrows = [
     ...(((stats?.[1]?.result as `0x${string}`[]) ?? []) as `0x${string}`[]),
+    ...(((stats?.[8]?.result as `0x${string}`[]) ?? []) as `0x${string}`[]),
     ...(((stats?.[0]?.result as `0x${string}`[]) ?? []) as `0x${string}`[]),
   ];
   const escrowCount = escrows.length;
@@ -79,11 +82,8 @@ export default function Dashboard() {
     const amt = escInfos?.[i * 2 + 1]?.result as bigint | undefined;
     return st === 1 ? acc + (amt ?? 0n) : acc;
   }, 0n);
-  const tvl = poolAssets + lockedEscrow + earnSupplied;
-
-  const utilization =
-    poolAssets > 0n ? Number((poolOutstanding * 1_000_000n) / poolAssets) / 1_000_000 : 0;
-  const poolApy = 0.005 * 26 * utilization * 100;
+  // 통합: 이음 Earn 유동성(브리지 포함) + 전세 락. 구 BridgePool 잔여도 합산해 정확도 유지.
+  const tvl = earnSupplied + poolAssets + lockedEscrow;
 
   const features = [
     {
@@ -106,18 +106,7 @@ export default function Dashboard() {
         "mKRW를 예치해 대출 이자로 실질 연이자를 받고, mETH 담보로 대출받습니다. 역전세 부족분 조달과 이음 수익의 핵심.",
         "Supply mKRW for real yield from borrower interest; borrow against mETH collateral. Core of reverse-jeonse loans and protocol revenue."
       ),
-      stat: t(`예치 APY ${earnApy.toFixed(2)}% · 예치 ${fmtKRW(earnSupplied)}`, `${earnApy.toFixed(2)}% APY · ${fmtKRW(earnSupplied)} supplied`),
-    },
-    {
-      href: "/pool",
-      icon: Landmark,
-      tag: poolApy > 0 ? `APY ${poolApy.toFixed(1)}%` : null,
-      title: t("브리지 풀", "Bridge Pool"),
-      desc: t(
-        "이사 날짜 사이 며칠을 잇는 초단기 유동성. 예치하면 선지급 수수료를 연이자로 받습니다.",
-        "Ultra-short liquidity bridging moving-date gaps. Deposit to earn advance fees as yield."
-      ),
-      stat: t(`예상 APY ${poolApy.toFixed(1)}% · 풀 ${fmtKRW(poolAssets)}`, `~${poolApy.toFixed(1)}% APY · ${fmtKRW(poolAssets)}`),
+      stat: t(`예치 APY ${earnApy.toFixed(2)}% · 유동성 ${fmtKRW(earnSupplied)}`, `${earnApy.toFixed(2)}% APY · ${fmtKRW(earnSupplied)}`),
     },
     {
       href: "/app",
@@ -149,7 +138,7 @@ export default function Dashboard() {
   const quick = [
     { href: "/jeonse/create", label: t("에스크로 개설", "New Escrow") },
     { href: "/create", label: t("계모임 개설", "New Circle") },
-    { href: "/pool", label: t("풀 예치", "Deposit") },
+    { href: "/earn", label: t("예치·대출", "Earn") },
   ];
 
   const kicker = "text-[11px] uppercase tracking-[0.22em] text-white/30";
@@ -182,8 +171,8 @@ export default function Dashboard() {
               </p>
               <p className="mt-3 text-xs text-white/35">
                 {t(
-                  `브리지 풀 ${fmtKRW(poolAssets)}  ·  전세 락 ${fmtKRW(lockedEscrow)}`,
-                  `Bridge pool ${fmtKRW(poolAssets)}  ·  Jeonse locked ${fmtKRW(lockedEscrow)}`
+                  `이음 Earn ${fmtKRW(earnSupplied + poolAssets)}  ·  전세 락 ${fmtKRW(lockedEscrow)}`,
+                  `IEUM Earn ${fmtKRW(earnSupplied + poolAssets)}  ·  Jeonse locked ${fmtKRW(lockedEscrow)}`
                 )}
               </p>
             </div>
@@ -191,7 +180,7 @@ export default function Dashboard() {
               {[
                 { k: t("에스크로", "Escrows"), v: String(escrowCount), accent: false },
                 { k: t("계모임", "Circles"), v: String(circleCount), accent: false },
-                { k: t("풀 APY", "Pool APY"), v: `${poolApy.toFixed(1)}%`, accent: true },
+                { k: t("Earn APY", "Earn APY"), v: `${earnApy.toFixed(1)}%`, accent: true },
               ].map((c) => (
                 <div key={c.k} className="px-4 text-left first:pl-0 last:pr-0 md:px-6 md:text-right">
                   <dt className="text-[10px] uppercase tracking-[0.14em] text-white/30">{c.k}</dt>

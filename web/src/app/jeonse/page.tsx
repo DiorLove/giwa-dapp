@@ -6,7 +6,10 @@ import { ArrowUpRight, Plus } from "lucide-react";
 import {
   JEONSE_FACTORY_ADDRESS,
   LEGACY_JEONSE_FACTORY_ADDRESS,
+  LEGACY_JEONSE_FACTORY_ADDRESS_2,
   BRIDGE_POOL_ADDRESS,
+  EARN_ADDRESS,
+  earnAbi,
   jeonseFactoryAbi,
   jeonseAbi,
   bridgePoolAbi,
@@ -46,14 +49,20 @@ export default function JeonseList() {
     abi: jeonseFactoryAbi,
     functionName: "getAll",
   });
+  const { data: legacy2 } = useReadContract({
+    address: LEGACY_JEONSE_FACTORY_ADDRESS_2,
+    abi: jeonseFactoryAbi,
+    functionName: "getAll",
+  });
   const escrows = [
     ...((legacy ?? []) as `0x${string}`[]),
+    ...((legacy2 ?? []) as `0x${string}`[]),
     ...((all ?? []) as `0x${string}`[]),
   ];
 
   const { data: poolAssets } = useReadContract({
-    address: BRIDGE_POOL_ADDRESS,
-    abi: bridgePoolAbi,
+    address: EARN_ADDRESS,
+    abi: earnAbi,
     functionName: "totalAssets",
     query: { refetchInterval: 5000 },
   });
@@ -138,11 +147,11 @@ export default function JeonseList() {
           </div>
           <div className="bg-black p-5 md:p-6">
             <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.15em] text-white/35">
-              {t("브리지 풀 자산", "Bridge Pool Assets")}
+              {t("이음 Earn 유동성", "IEUM Earn Liquidity")}
               <InfoTip
                 text={t(
-                  "이사 날짜가 어긋날 때 기존 세입자에게 보증금을 미리 지급해 주는 유동성 풀의 총자산입니다. 누구나 예치해 선지급 수수료(0.5%)를 수익으로 받을 수 있어요.",
-                  "Total assets in the liquidity pool that advances refunds when moving dates misalign. Anyone can deposit and earn the 0.5% advance fee."
+                  "예치·대출과 브리지 선지급을 함께 처리하는 통합 유동성 풀(이음 Earn)의 총자산입니다. 예치하면 대출 이자와 선지급 수수료를 함께 수익으로 받습니다.",
+                  "Total assets of the unified IEUM Earn pool that powers both lending and bridge advances. Suppliers earn lending interest plus advance fees."
                 )}
               />
             </p>

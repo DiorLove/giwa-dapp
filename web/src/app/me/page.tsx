@@ -27,13 +27,14 @@ import {
 } from "lucide-react";
 import { giwaSepolia } from "@/lib/chain";
 import {
-  BRIDGE_POOL_ADDRESS,
+  EARN_ADDRESS,
   FACTORY_ADDRESS,
   JEONSE_FACTORY_ADDRESS,
   LEGACY_FACTORY_ADDRESS,
   LEGACY_JEONSE_FACTORY_ADDRESS,
+  LEGACY_JEONSE_FACTORY_ADDRESS_2,
   MOCKKRW_ADDRESS,
-  bridgePoolAbi,
+  earnAbi,
   explorerUrl,
   factoryAbi,
   fmtKRW,
@@ -206,10 +207,9 @@ export default function MyPage() {
       { address: LEGACY_FACTORY_ADDRESS, abi: factoryAbi, functionName: "getAll" },
       { address: JEONSE_FACTORY_ADDRESS, abi: jeonseFactoryAbi, functionName: "getAll" },
       { address: LEGACY_JEONSE_FACTORY_ADDRESS, abi: jeonseFactoryAbi, functionName: "getAll" },
-      { address: BRIDGE_POOL_ADDRESS, abi: bridgePoolAbi, functionName: "totalAssets" },
-      { address: BRIDGE_POOL_ADDRESS, abi: bridgePoolAbi, functionName: "totalShares" },
-      { address: BRIDGE_POOL_ADDRESS, abi: bridgePoolAbi, functionName: "shares", args: [me] },
+      { address: EARN_ADDRESS, abi: earnAbi, functionName: "supplyValue", args: [me] },
       { address: MOCKKRW_ADDRESS, abi: mockKrwAbi, functionName: "balanceOf", args: [me] },
+      { address: LEGACY_JEONSE_FACTORY_ADDRESS_2, abi: jeonseFactoryAbi, functionName: "getAll" },
     ],
     query: { enabled, refetchInterval: enabled ? 5000 : undefined },
   });
@@ -220,13 +220,11 @@ export default function MyPage() {
   ];
   const escrows = [
     ...(((base?.[3]?.result as `0x${string}`[]) ?? []) as `0x${string}`[]),
+    ...(((base?.[6]?.result as `0x${string}`[]) ?? []) as `0x${string}`[]),
     ...(((base?.[2]?.result as `0x${string}`[]) ?? []) as `0x${string}`[]),
   ];
-  const totalAssets = (base?.[4]?.result as bigint | undefined) ?? 0n;
-  const totalShares = (base?.[5]?.result as bigint | undefined) ?? 0n;
-  const myShares = (base?.[6]?.result as bigint | undefined) ?? 0n;
-  const balance = (base?.[7]?.result as bigint | undefined) ?? 0n;
-  const poolValue = totalShares > 0n ? (myShares * totalAssets) / totalShares : 0n;
+  const poolValue = (base?.[4]?.result as bigint | undefined) ?? 0n;
+  const balance = (base?.[5]?.result as bigint | undefined) ?? 0n;
 
   const { data: cInfos } = useReadContracts({
     contracts: circles.flatMap((m) => [
@@ -430,7 +428,7 @@ export default function MyPage() {
                 </p>
               </div>
               <div className="bg-black p-5 md:p-6">
-                <p className={label}>{t("브리지 풀 예치", "Pool Deposit")}</p>
+                <p className={label}>{t("이음 Earn 예치", "Earn Deposit")}</p>
                 <p className="mt-2 text-xl font-medium text-white tabular-nums md:text-2xl">
                   <AnimatedNumber
                     value={Number(poolValue / 10n ** 18n)}
