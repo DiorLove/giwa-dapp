@@ -35,7 +35,7 @@ export function AppNav() {
   }, [isConnected, router]);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-black/70 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-black backdrop-blur-xl supports-[backdrop-filter]:bg-black/70">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 md:px-6">
         <div className="flex items-center gap-10">
           <Link
