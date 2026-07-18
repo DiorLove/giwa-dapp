@@ -28,8 +28,11 @@ contract JeonseEscrow {
     address public immutable treasury;      // 프로토콜 수수료 수취처
     uint256 public immutable settleFeeBps;  // 정산 수수료 (전세금 대비 bps, 집주인 차액에서만 차감)
 
+    uint256 public immutable shortfall;     // 역전세 부족분 = refund > jeonse 일 때 집주인이 채워야 하는 금액
+
     State public state;
     bool public bridged; // A가 브리지 풀에서 선지급을 받았는가
+    bool public shortfallCovered; // 집주인이 역전세 부족분을 채웠는가
     mapping(address => uint256) public claimable;
     mapping(address => bool) public cancelApproved;
 
@@ -42,6 +45,7 @@ contract JeonseEscrow {
     Doc[] public documents;
 
     event Funded(address indexed tenantIn, uint256 amount);
+    event ShortfallCovered(address indexed landlord, uint256 amount);
     event DocumentAnchored(bytes32 indexed hash, string label, address indexed by);
     event Bridged();
     event Settled(uint256 toTenantOut, uint256 toLandlord, bool viaBridge);
@@ -68,7 +72,6 @@ contract JeonseEscrow {
         address _treasury,
         uint256 _settleFeeBps
     ) {
-        require(_refundAmount <= _jeonseAmount, "refund > jeonse");
         require(_jeonseAmount > 0, "jeonse=0");
         require(_settleDate > block.timestamp, "settle in past");
         require(_settleFeeBps <= 100, "fee too high"); // 최대 1%
@@ -86,6 +89,20 @@ contract JeonseEscrow {
         settleDate = _settleDate;
         treasury = _treasury;
         settleFeeBps = _settleFeeBps;
+        // 역전세: 반환할 보증금이 신규 전세금보다 크면 그 차액을 집주인이 채워야 한다
+        shortfall = _refundAmount > _jeonseAmount ? _refundAmount - _jeonseAmount : 0;
+    }
+
+    /// 집주인 L: 역전세 부족분을 자기 지갑에서 에스크로에 채운다.
+    /// 이 금액과 신규 전세금(B의 락)을 합쳐야 정산 시 A에게 보증금을 전액 반환할 수 있다.
+    function coverShortfall() external {
+        require(shortfall > 0, "no shortfall");
+        require(!shortfallCovered, "already covered");
+        require(msg.sender == landlord, "not landlord");
+        require(state == State.Created || state == State.Funded, "not open");
+        shortfallCovered = true;
+        token.safeTransferFrom(msg.sender, address(this), shortfall);
+        emit ShortfallCovered(msg.sender, shortfall);
     }
 
     /// B: 전세금 락 — 이 순간부터 "돈이 준비되어 있음"이 온체인 사실이 된다
@@ -111,6 +128,7 @@ contract JeonseEscrow {
     function registerBridge() external {
         require(msg.sender == bridgePool, "not pool");
         require(state == State.Funded, "not funded");
+        require(shortfall == 0 || shortfallCovered, "shortfall not covered");
         require(!bridged, "already bridged");
         bridged = true;
         emit Bridged();
@@ -121,9 +139,11 @@ contract JeonseEscrow {
     function settle() external {
         require(state == State.Funded, "not funded");
         require(block.timestamp >= settleDate, "too early");
+        require(shortfall == 0 || shortfallCovered, "shortfall not covered");
         state = State.Settled;
 
-        uint256 toLandlord = jeonseAmount - refundAmount;
+        // 정산 재원 = 신규 전세금(B 락) + 집주인이 채운 부족분. 역전세면 집주인 차액은 0.
+        uint256 toLandlord = jeonseAmount + (shortfallCovered ? shortfall : 0) - refundAmount;
         // 프로토콜 정산 수수료: 집주인 차액에서만 차감 (반환 보증금은 건드리지 않음)
         uint256 fee = (jeonseAmount * settleFeeBps) / 10000;
         if (fee > toLandlord) fee = toLandlord;
@@ -149,6 +169,8 @@ contract JeonseEscrow {
         if (state == State.Created) {
             require(msg.sender == landlord, "not landlord");
             state = State.Cancelled;
+            // 펀딩 전 채워둔 부족분이 있으면 집주인에게 반환
+            if (shortfallCovered) claimable[landlord] += shortfall;
             emit Cancelled();
             return;
         }
@@ -159,6 +181,8 @@ contract JeonseEscrow {
         if (cancelApproved[landlord] && cancelApproved[tenantIn]) {
             state = State.Cancelled;
             claimable[tenantIn] += jeonseAmount;
+            // 집주인이 채운 부족분도 함께 반환
+            if (shortfallCovered) claimable[landlord] += shortfall;
             emit Cancelled();
         }
     }

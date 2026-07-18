@@ -54,12 +54,61 @@ contract JeonseEscrowTest is Test {
 
     // ---- 생성/자금 락 ----
 
-    function test_ConstructorValidation() public {
-        vm.expectRevert(bytes("refund > jeonse"));
-        new JeonseEscrow(
+    // ---- 역전세: 반환 보증금 > 신규 전세금, 집주인이 부족분을 채운다 ----
+
+    function test_ReverseJeonseCoverShortfallAndSettle() public {
+        uint256 newJeonse = 200_000_000e18; // ₩2억 (내린 전세금)
+        uint256 oldRefund = 300_000_000e18; // ₩3억 (돌려줄 구 보증금)
+        JeonseEscrow rev = new JeonseEscrow(
             IERC20(address(krw)), address(pool), landlord, tenantIn, tenantOut,
-            100e18, 200e18, block.timestamp + 1 days, TREASURY, 0
+            newJeonse, oldRefund, block.timestamp + SETTLE_DELAY, TREASURY, 0
         );
+        assertEq(rev.shortfall(), oldRefund - newJeonse); // ₩1억
+
+        // 집주인이 지갑에서 부족분을 채운다
+        vm.startPrank(landlord);
+        for (uint256 i = 0; i < 12; i++) krw.faucet(); // ₩1.2억 확보
+        krw.approve(address(rev), type(uint256).max);
+        rev.coverShortfall();
+        vm.stopPrank();
+        assertTrue(rev.shortfallCovered());
+
+        // 신규 세입자 락
+        vm.startPrank(tenantIn);
+        krw.approve(address(rev), type(uint256).max);
+        rev.fund();
+        vm.stopPrank();
+
+        // 정산: A는 구 보증금 전액, L 차액은 0
+        vm.warp(rev.settleDate());
+        rev.settle();
+        assertEq(rev.claimable(tenantOut), oldRefund);
+        assertEq(rev.claimable(landlord), 0);
+        assertEq(krw.balanceOf(address(rev)), oldRefund);
+    }
+
+    function test_ReverseJeonseCannotSettleWithoutCover() public {
+        JeonseEscrow rev = new JeonseEscrow(
+            IERC20(address(krw)), address(pool), landlord, tenantIn, tenantOut,
+            200_000_000e18, 300_000_000e18, block.timestamp + SETTLE_DELAY, TREASURY, 0
+        );
+        vm.startPrank(tenantIn);
+        krw.approve(address(rev), type(uint256).max);
+        rev.fund();
+        vm.stopPrank();
+        vm.warp(rev.settleDate());
+        vm.expectRevert(bytes("shortfall not covered"));
+        rev.settle();
+    }
+
+    function test_OnlyLandlordCoversShortfall() public {
+        JeonseEscrow rev = new JeonseEscrow(
+            IERC20(address(krw)), address(pool), landlord, tenantIn, tenantOut,
+            200_000_000e18, 300_000_000e18, block.timestamp + SETTLE_DELAY, TREASURY, 0
+        );
+        vm.prank(tenantIn);
+        vm.expectRevert(bytes("not landlord"));
+        rev.coverShortfall();
     }
 
     function test_FundLocksJeonse() public {

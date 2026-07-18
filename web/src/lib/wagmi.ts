@@ -34,5 +34,15 @@ export const config = createConfig({
         ]
       : []),
   ],
-  transports: { [giwaSepolia.id]: http() },
+  // 다중 탭/동시 접속 시 RPC 부하로 개별 eth_call 이 간헐 실패하는 것을 완화:
+  // - batch: 여러 호출을 하나의 JSON-RPC 배치로 묶어 요청 수를 줄이고 부분 실패를 줄임
+  // - retryCount/Delay: 일시적 실패를 자동 재시도
+  transports: {
+    [giwaSepolia.id]: http(undefined, {
+      batch: { wait: 16 },
+      retryCount: 5,
+      retryDelay: 250,
+      timeout: 20_000,
+    }),
+  },
 });

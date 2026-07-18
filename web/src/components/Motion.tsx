@@ -11,6 +11,14 @@ export function useMounted() {
   return mounted;
 }
 
+/** 마지막으로 유효(undefined 아님)했던 값을 유지한다.
+ *  동시 접속/RPC 부하로 읽기가 일시 실패해 값이 undefined 로 튈 때 화면이 0으로 깜빡이는 것을 방지. */
+export function useSticky<T>(value: T | undefined): T | undefined {
+  const ref = useRef<T | undefined>(undefined);
+  if (value !== undefined && value !== null) ref.current = value;
+  return ref.current;
+}
+
 /** 마운트 시 아래에서 떠오르는 래퍼 — 페이지 섹션 스태거용 */
 export function FadeUp({
   children,

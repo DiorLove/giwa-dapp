@@ -33,6 +33,7 @@ import {
   LEGACY_FACTORY_ADDRESS,
   LEGACY_JEONSE_FACTORY_ADDRESS,
   LEGACY_JEONSE_FACTORY_ADDRESS_2,
+  LEGACY_JEONSE_FACTORY_ADDRESS_3,
   MOCKKRW_ADDRESS,
   earnAbi,
   explorerUrl,
@@ -45,7 +46,7 @@ import {
   shortAddr,
 } from "@/lib/contracts";
 import { AppNav } from "@/components/AppNav";
-import { AnimatedNumber, FadeUp, useMounted } from "@/components/Motion";
+import { AnimatedNumber, FadeUp, useMounted, useSticky } from "@/components/Motion";
 import { WalletModal } from "@/components/WalletModal";
 import { useLang } from "@/lib/i18n";
 
@@ -210,6 +211,7 @@ export default function MyPage() {
       { address: EARN_ADDRESS, abi: earnAbi, functionName: "supplyValue", args: [me] },
       { address: MOCKKRW_ADDRESS, abi: mockKrwAbi, functionName: "balanceOf", args: [me] },
       { address: LEGACY_JEONSE_FACTORY_ADDRESS_2, abi: jeonseFactoryAbi, functionName: "getAll" },
+      { address: LEGACY_JEONSE_FACTORY_ADDRESS_3, abi: jeonseFactoryAbi, functionName: "getAll" },
     ],
     query: { enabled, refetchInterval: enabled ? 5000 : undefined },
   });
@@ -221,10 +223,12 @@ export default function MyPage() {
   const escrows = [
     ...(((base?.[3]?.result as `0x${string}`[]) ?? []) as `0x${string}`[]),
     ...(((base?.[6]?.result as `0x${string}`[]) ?? []) as `0x${string}`[]),
+    ...(((base?.[7]?.result as `0x${string}`[]) ?? []) as `0x${string}`[]),
     ...(((base?.[2]?.result as `0x${string}`[]) ?? []) as `0x${string}`[]),
   ];
-  const poolValue = (base?.[4]?.result as bigint | undefined) ?? 0n;
-  const balance = (base?.[5]?.result as bigint | undefined) ?? 0n;
+  // sticky: 일시적 RPC 실패로 값이 0으로 깜빡이는 것을 방지 (직전 유효값 유지)
+  const poolValue = useSticky(base?.[4]?.result as bigint | undefined) ?? 0n;
+  const balance = useSticky(base?.[5]?.result as bigint | undefined) ?? 0n;
 
   const { data: cInfos } = useReadContracts({
     contracts: circles.flatMap((m) => [

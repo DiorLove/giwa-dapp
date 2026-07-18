@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLang } from "@/lib/i18n";
 
-const STORAGE_KEY = "ieum-tour-v2";
+const STORAGE_KEY = "ieum-tour-v3";
 export const OPEN_TOUR_EVENT = "ieum:open-tour";
 
 type Step = {
@@ -18,8 +18,8 @@ const STEPS: Step[] = [
   {
     title: ["이음에 오신 것을 환영해요", "Welcome to IEUM"],
     desc: [
-      "이음은 전세금·곗돈처럼 한국인의 목돈이 움직이는 길을 스마트 컨트랙트로 잇는 온체인 에스크로입니다. 30초만에 핵심 기능을 안내해 드릴게요.",
-      "IEUM is an on-chain escrow linking the paths where Korea's big money moves. Here's a 30-second tour of the essentials.",
+      "이음은 전세금·곗돈처럼 한국인의 목돈이 움직이는 길을 스마트 컨트랙트로 잇는 온체인 금융 프로토콜입니다. 30초만에 핵심을 안내할게요. (모바일은 오른쪽 위 ☰ 메뉴에서 각 기능으로 이동해요.)",
+      "IEUM is an on-chain finance protocol linking the paths where Korea's big money moves. A 30-second tour. (On mobile, use the ☰ menu top-right to reach each feature.)",
     ],
   },
   {
@@ -34,24 +34,24 @@ const STEPS: Step[] = [
     target: "gas",
     title: ["테스트 자금 받기", "Get test funds"],
     desc: [
-      "여기서 GIWA Sepolia 가스 ETH를 받고, 대시보드의 '테스트 원화 발급'으로 mKRW ₩10,000,000을 무료로 받으세요. 실제 돈이 아니에요.",
-      "Grab GIWA Sepolia gas ETH here, then mint ₩10,000,000 of free mock KRW from the dashboard. It's not real money.",
+      "GIWA Sepolia 가스 ETH를 받고, 대시보드·마이페이지의 '테스트 원화 발급'으로 mKRW를 무료로 받으세요. 실제 돈이 아니에요.",
+      "Grab GIWA Sepolia gas ETH, then mint free mock KRW from the dashboard or My Page. It's not real money.",
     ],
   },
   {
     target: "nav-jeonse",
     title: ["전세 에스크로", "Jeonse Escrow"],
     desc: [
-      "메인 기능. 신규 세입자의 전세금을 락하고, 정산일에 보증금 반환과 잔금 지급을 한 트랜잭션으로 동시에 실행합니다.",
-      "The main product. Lock the incoming deposit, then refund and balance execute simultaneously in one transaction on settlement day.",
+      "신규 세입자의 전세금을 락하고, 정산일에 보증금 반환과 잔금 지급을 한 트랜잭션으로 동시에 실행합니다. 전세가가 내린 역전세면 부족분을 지갑이나 Earn 대출로 채워 개설해요.",
+      "Lock the incoming deposit; refund and balance settle together in one transaction. In a reverse-jeonse (prices fell), cover the shortfall from your wallet or an Earn loan.",
     ],
   },
   {
-    target: "nav-pool",
-    title: ["브리지 풀", "Bridge Pool"],
+    target: "nav-earn",
+    title: ["이음 Earn — 예치·대출", "IEUM Earn — Lend & Borrow"],
     desc: [
-      "이사 날짜 사이 며칠이 급하면 보증금을 미리 받고(수수료 0.5%), 누구나 예치해서 그 수수료를 수익으로 가져갑니다.",
-      "Need the deposit early? The pool advances it (0.5% fee) — and anyone can deposit to earn those fees.",
+      "mKRW를 예치하면 대출 이자로 실질 연이자(APY)를 받고, mETH를 담보로 대출도 받습니다. 전세 브리지 선지급과 역전세 대출이 이 단일 풀에서 함께 돌아가는 이음의 핵심 수익원이에요.",
+      "Supply mKRW to earn real APY from borrower interest, and borrow against mETH collateral. Bridge advances and reverse-jeonse loans run in this one pool — IEUM's core revenue.",
     ],
   },
   {
@@ -63,8 +63,6 @@ const STEPS: Step[] = [
     ],
   },
 ];
-
-const BUBBLE_W = 320;
 
 export function Onboarding() {
   const { t } = useLang();
@@ -127,6 +125,8 @@ export function Onboarding() {
   const s = STEPS[step];
   const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
   const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  // 작은 화면에서 말풍선이 화면을 넘지 않도록 폭을 반응형으로
+  const BUBBLE_W = Math.min(320, vw - 32);
 
   // 말풍선 위치: 타깃 아래(공간 없으면 위), 없으면 중앙
   const PAD = 8;

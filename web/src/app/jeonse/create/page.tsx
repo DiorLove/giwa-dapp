@@ -3,9 +3,19 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowUpRight, TrendingUp } from "lucide-react";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
-import { parseUnits, decodeEventLog, isAddress } from "viem";
-import { JEONSE_FACTORY_ADDRESS, errMsg, jeonseFactoryAbi, onlyDigits, withCommas } from "@/lib/contracts";
+import { useAccount, usePublicClient, useReadContract, useWriteContract } from "wagmi";
+import { parseUnits, decodeEventLog, isAddress, maxUint256 } from "viem";
+import {
+  JEONSE_FACTORY_ADDRESS,
+  MOCKKRW_ADDRESS,
+  errMsg,
+  fmtKRW,
+  jeonseAbi,
+  jeonseFactoryAbi,
+  mockKrwAbi,
+  onlyDigits,
+  withCommas,
+} from "@/lib/contracts";
 import { AppNav } from "@/components/AppNav";
 import { InfoTip } from "@/components/InfoTip";
 import { FadeUp } from "@/components/Motion";
@@ -26,6 +36,16 @@ export default function JeonseCreate() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 집주인 지갑의 mKRW 잔고 — 역전세 부족분을 지갑에서 바로 채울 수 있는지 판단
+  const { data: krwBalRaw } = useReadContract({
+    address: MOCKKRW_ADDRESS,
+    abi: mockKrwAbi,
+    functionName: "balanceOf",
+    args: [address ?? "0x0000000000000000000000000000000000000000"],
+    query: { enabled: !!address, refetchInterval: 5000 },
+  });
+  const krwBal = (krwBalRaw as bigint | undefined) ?? 0n;
+
   const dateInFuture =
     demo10min ||
     (!!settleDate && new Date(settleDate).getTime() > Date.now() + 60_000);
@@ -34,7 +54,6 @@ export default function JeonseCreate() {
     isAddress(tenantOut) &&
     Number(jeonse) > 0 &&
     Number(refund) >= 0 &&
-    Number(refund) <= Number(jeonse) &&
     dateInFuture;
 
   async function create() {
@@ -76,16 +95,43 @@ export default function JeonseCreate() {
         args,
       });
       const receipt = await publicClient!.waitForTransactionReceipt({ hash });
+      let escrowAddr: `0x${string}` | null = null;
       for (const log of receipt.logs) {
         try {
           const ev = decodeEventLog({ abi: jeonseFactoryAbi, ...log });
           if (ev.eventName === "EscrowCreated") {
-            router.push(`/jeonse/${(ev.args as { escrow: string }).escrow}`);
-            return;
+            escrowAddr = (ev.args as { escrow: `0x${string}` }).escrow;
+            break;
           }
         } catch {}
       }
-      router.push("/jeonse");
+
+      // 역전세: 개설 직후 집주인 지갑에서 부족분을 에스크로에 채운다 (한 흐름으로)
+      if (escrowAddr && shortfallWei > 0n) {
+        const allowance = (await publicClient!.readContract({
+          address: MOCKKRW_ADDRESS,
+          abi: mockKrwAbi,
+          functionName: "allowance",
+          args: [address!, escrowAddr],
+        })) as bigint;
+        if (allowance < shortfallWei) {
+          const ah = await writeContractAsync({
+            address: MOCKKRW_ADDRESS,
+            abi: mockKrwAbi,
+            functionName: "approve",
+            args: [escrowAddr, maxUint256],
+          });
+          await publicClient!.waitForTransactionReceipt({ hash: ah });
+        }
+        const ch = await writeContractAsync({
+          address: escrowAddr,
+          abi: jeonseAbi,
+          functionName: "coverShortfall",
+        });
+        await publicClient!.waitForTransactionReceipt({ hash: ch });
+      }
+
+      router.push(escrowAddr ? `/jeonse/${escrowAddr}` : "/jeonse");
     } catch (e) {
       setError(errMsg(e));
     } finally {
@@ -102,6 +148,20 @@ export default function JeonseCreate() {
   // 역전세: 반환할 기존 보증금이 신규 전세금보다 커서 집주인이 부족분을 메꿔야 하는 경우
   const shortfall = Math.max(refundN - jeonseN, 0);
   const isReverse = shortfall > 0;
+  const toWei = (s: string) => {
+    try {
+      return parseUnits(s || "0", 18);
+    } catch {
+      return 0n;
+    }
+  };
+  const shortfallWei = (() => {
+    const j = toWei(jeonse);
+    const r = toWei(refund);
+    return r > j ? r - j : 0n;
+  })();
+  // 지갑에 부족분만큼 mKRW가 있으면 지갑에서 바로 채워 개설, 없으면 대출 안내
+  const hasFundsForShortfall = krwBal >= shortfallWei;
 
   return (
     <div className="min-h-screen bg-black">
@@ -252,34 +312,66 @@ export default function JeonseCreate() {
             </dl>
 
             {isReverse ? (
-              <>
-                {/* 역전세 안내: 부족분을 먼저 마련해야 에스크로 개설 가능 */}
-                <div className="mt-6 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] p-4">
-                  <p className="text-sm font-medium text-amber-200">
-                    {t("역전세예요 — 부족분을 먼저 마련하세요", "Reverse-jeonse — cover the shortfall first")}
-                  </p>
-                  <p className="mt-2 text-xs leading-relaxed text-white/50">
+              hasFundsForShortfall ? (
+                <>
+                  {/* 역전세 + 지갑에 부족분 있음: 개설과 동시에 지갑에서 부족분을 채운다 */}
+                  <div className="mt-6 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+                    <p className="text-sm font-medium text-white/80">
+                      {t("역전세 — 부족분을 지갑에서 채웁니다", "Reverse-jeonse — funded from your wallet")}
+                    </p>
+                    <p className="mt-2 text-xs leading-relaxed text-white/50">
+                      {t(
+                        `반환 보증금이 신규 전세금보다 ₩${shortfall.toLocaleString("ko-KR")} 큽니다. 개설과 동시에 지갑에서 ₩${shortfall.toLocaleString("ko-KR")}이 에스크로로 들어가, 정산일에 기존 세입자에게 보증금 전액이 반환됩니다.`,
+                        `The refund exceeds the new deposit by ₩${shortfall.toLocaleString("ko-KR")}. On creation, ₩${shortfall.toLocaleString("ko-KR")} moves from your wallet into the escrow, so the outgoing tenant is refunded in full at settlement.`
+                      )}
+                    </p>
+                  </div>
+                  <button
+                    onClick={create}
+                    disabled={busy || !valid}
+                    className="pressable mt-4 h-12 w-full rounded-full bg-white text-sm font-semibold text-black disabled:opacity-40"
+                  >
+                    {busy
+                      ? t("개설 중", "Creating")
+                      : t(`개설 + 부족분 ₩${shortfall.toLocaleString("ko-KR")} 채우기`, `Create + cover ₩${shortfall.toLocaleString("ko-KR")}`)}
+                  </button>
+                  <p className="mt-3 text-xs leading-relaxed text-white/30">
                     {t(
-                      `반환할 보증금이 신규 전세금보다 ₩${shortfall.toLocaleString("ko-KR")} 큽니다. 에스크로는 반환금이 락 금액을 넘을 수 없어, 이대로는 개설되지 않아요. 부족분 ₩${shortfall.toLocaleString("ko-KR")}을 이음 Earn에서 담보 대출로 마련해 채운 뒤 개설하세요.`,
-                      `The refund exceeds the new deposit by ₩${shortfall.toLocaleString("ko-KR")}. An escrow can't refund more than is locked, so it won't open as-is. Borrow the ₩${shortfall.toLocaleString("ko-KR")} shortfall from IEUM Earn against collateral, top it up, then open.`
+                      "지갑 잔액에서 부족분이 빠져나갑니다. 개설 후 신규 세입자가 전세금을 락하면 정산 준비가 끝납니다.",
+                      "The shortfall leaves your wallet balance. Once the incoming tenant locks the deposit, it's ready to settle."
                     )}
                   </p>
-                  <Link
-                    href="/earn"
-                    className="pressable mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-white text-sm font-semibold text-black"
-                  >
-                    <TrendingUp size={16} strokeWidth={1.8} />
-                    {t(`이음 Earn에서 ₩${shortfall.toLocaleString("ko-KR")} 대출받기`, `Borrow ₩${shortfall.toLocaleString("ko-KR")} on IEUM Earn`)}
-                    <ArrowUpRight size={15} strokeWidth={1.8} className="opacity-60" />
-                  </Link>
-                </div>
-                <p className="mt-4 text-xs leading-relaxed text-white/30">
-                  {t(
-                    "부족분을 마련해 신규 전세금을 반환금 이상으로 맞추면, 위 버튼이 개설 버튼으로 바뀝니다.",
-                    "Once you cover the shortfall so the new deposit ≥ the refund, this turns back into the create action."
-                  )}
-                </p>
-              </>
+                </>
+              ) : (
+                <>
+                  {/* 역전세 + 지갑 잔액 부족: 이음 Earn에서 대출로 채우도록 안내 */}
+                  <div className="mt-6 rounded-xl border border-amber-400/20 bg-amber-400/[0.05] p-4">
+                    <p className="text-sm font-medium text-amber-200">
+                      {t("역전세 — 지갑 잔액이 부족해요", "Reverse-jeonse — wallet balance short")}
+                    </p>
+                    <p className="mt-2 text-xs leading-relaxed text-white/50">
+                      {t(
+                        `부족분은 ₩${shortfall.toLocaleString("ko-KR")}인데 지갑 잔액은 ${fmtKRW(krwBal)}입니다. 이음 Earn에서 담보 대출로 부족분을 마련해 지갑을 채운 뒤 다시 개설하세요.`,
+                        `The shortfall is ₩${shortfall.toLocaleString("ko-KR")} but your wallet holds ${fmtKRW(krwBal)}. Borrow it from IEUM Earn against collateral to top up, then come back to create.`
+                      )}
+                    </p>
+                    <Link
+                      href="/earn"
+                      className="pressable mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-white text-sm font-semibold text-black"
+                    >
+                      <TrendingUp size={16} strokeWidth={1.8} />
+                      {t(`이음 Earn에서 ₩${shortfall.toLocaleString("ko-KR")} 대출받기`, `Borrow ₩${shortfall.toLocaleString("ko-KR")} on IEUM Earn`)}
+                      <ArrowUpRight size={15} strokeWidth={1.8} className="opacity-60" />
+                    </Link>
+                  </div>
+                  <p className="mt-4 text-xs leading-relaxed text-white/30">
+                    {t(
+                      "지갑에 부족분이 채워지면 이 카드가 바로 개설 버튼으로 바뀝니다.",
+                      "Once your wallet holds the shortfall, this turns into the create action."
+                    )}
+                  </p>
+                </>
+              )
             ) : (
               <>
                 <button

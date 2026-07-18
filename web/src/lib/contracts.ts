@@ -2,9 +2,9 @@ import { parseAbi } from "viem";
 
 export const MOCKKRW_ADDRESS = process.env.NEXT_PUBLIC_MOCKKRW_ADDRESS as `0x${string}`;
 export const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_FACTORY_ADDRESS as `0x${string}`;
-// 통합본: 신규 에스크로는 IeumEarn 을 브리지 풀로 사용
+// 역전세 부족분 톱업(coverShortfall) 지원 팩토리 — 신규 에스크로는 IeumEarn 을 브리지 풀로 사용
 export const JEONSE_FACTORY_ADDRESS =
-  "0xD4dD00DB42051B50c4d9a423df8a4EB62C59204D" as `0x${string}`;
+  "0x491cE6Cd7ba9493F3624877e29F6F8C202588991" as `0x${string}`;
 export const BRIDGE_POOL_ADDRESS = process.env
   .NEXT_PUBLIC_BRIDGE_POOL_ADDRESS as `0x${string}`;
 
@@ -18,6 +18,9 @@ export const LEGACY_JEONSE_FACTORY_ADDRESS =
 // 직전 팩토리(구 BridgePool 사용) — 기존 에스크로 보존용으로 목록에 병합
 export const LEGACY_JEONSE_FACTORY_ADDRESS_2 =
   "0xeec2bc9B6B9E281b2FafDEB38D40719547a95eC2" as `0x${string}`;
+// 역전세 톱업 지원 전 통합 팩토리 — 기존 에스크로 보존용으로 목록에 병합
+export const LEGACY_JEONSE_FACTORY_ADDRESS_3 =
+  "0xD4dD00DB42051B50c4d9a423df8a4EB62C59204D" as `0x${string}`;
 
 // 이음 Earn 통합 머니마켓 (예치·대출 + 브리지 선지급) — GIWA Sepolia v2
 export const EARN_ADDRESS =
@@ -89,8 +92,11 @@ export const jeonseAbi = parseAbi([
   "function tenantOut() view returns (address)",
   "function jeonseAmount() view returns (uint256)",
   "function refundAmount() view returns (uint256)",
+  "function shortfall() view returns (uint256)",
+  "function shortfallCovered() view returns (bool)",
   "function settleDate() view returns (uint256)",
   "function bridged() view returns (bool)",
+  "function coverShortfall()",
   "function claimable(address) view returns (uint256)",
   "function cancelApproved(address) view returns (bool)",
   "function documentCount() view returns (uint256)",
