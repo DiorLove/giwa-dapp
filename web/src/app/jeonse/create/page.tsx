@@ -17,8 +17,8 @@ export default function JeonseCreate() {
   const { writeContractAsync } = useWriteContract();
   const [tenantIn, setTenantIn] = useState("");
   const [tenantOut, setTenantOut] = useState("");
-  const [jeonse, setJeonse] = useState("300000000");
-  const [refund, setRefund] = useState("280000000");
+  const [jeonse, setJeonse] = useState("");
+  const [refund, setRefund] = useState("");
   const [settleDate, setSettleDate] = useState("");
   const [demo10min, setDemo10min] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -93,7 +93,7 @@ export default function JeonseCreate() {
 
   const label = "text-xs uppercase tracking-[0.15em] text-white/35";
   const input =
-    "h-12 w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 text-sm text-white outline-none transition-colors [color-scheme:dark] focus:border-white/30";
+    "h-12 w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 text-sm text-white outline-none transition-colors [color-scheme:dark] placeholder:text-white/25 focus:border-white/30";
   const landlordDiff = Math.max(Number(jeonse || 0) - Number(refund || 0), 0);
 
   return (
@@ -144,6 +144,7 @@ export default function JeonseCreate() {
                     inputMode="numeric"
                     value={withCommas(jeonse)}
                     onChange={(e) => setJeonse(onlyDigits(e.target.value))}
+                    placeholder={t("예) 300,000,000", "e.g. 300,000,000")}
                     className={`${input} pr-16`}
                   />
                   <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-xs text-white/35">
@@ -159,6 +160,7 @@ export default function JeonseCreate() {
                     inputMode="numeric"
                     value={withCommas(refund)}
                     onChange={(e) => setRefund(onlyDigits(e.target.value))}
+                    placeholder={t("예) 280,000,000", "e.g. 280,000,000")}
                     className={`${input} pr-16`}
                   />
                   <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-xs text-white/35">

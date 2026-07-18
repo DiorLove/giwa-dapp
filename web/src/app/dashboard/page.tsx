@@ -64,8 +64,6 @@ export default function Dashboard() {
   const circleCount =
     ((stats?.[2]?.result as unknown[] | undefined)?.length ?? 0) +
     ((stats?.[3]?.result as unknown[] | undefined)?.length ?? 0);
-  const poolAssets = (stats?.[4]?.result as bigint | undefined) ?? 0n;
-  const poolOutstanding = (stats?.[5]?.result as bigint | undefined) ?? 0n;
   const earnApy = rayToApy((stats?.[6]?.result as bigint | undefined) ?? 0n);
   const earnSupplied = (stats?.[7]?.result as bigint | undefined) ?? 0n;
   const myBalance = (balance as bigint | undefined) ?? 0n;
@@ -82,8 +80,9 @@ export default function Dashboard() {
     const amt = escInfos?.[i * 2 + 1]?.result as bigint | undefined;
     return st === 1 ? acc + (amt ?? 0n) : acc;
   }, 0n);
-  // 통합: 이음 Earn 유동성(브리지 포함) + 전세 락. 구 BridgePool 잔여도 합산해 정확도 유지.
-  const tvl = earnSupplied + poolAssets + lockedEscrow;
+  // 통합: 이음 Earn 유동성(브리지 통합) + 전세 락.
+  // 구 BridgePool(poolAssets)은 Earn으로 융화되어 더 이상 합산하지 않음 — /earn 의 totalAssets 와 일치시킴.
+  const tvl = earnSupplied + lockedEscrow;
 
   const features = [
     {
@@ -171,8 +170,8 @@ export default function Dashboard() {
               </p>
               <p className="mt-3 text-xs text-white/35">
                 {t(
-                  `이음 Earn ${fmtKRW(earnSupplied + poolAssets)}  ·  전세 락 ${fmtKRW(lockedEscrow)}`,
-                  `IEUM Earn ${fmtKRW(earnSupplied + poolAssets)}  ·  Jeonse locked ${fmtKRW(lockedEscrow)}`
+                  `이음 Earn ${fmtKRW(earnSupplied)}  ·  전세 락 ${fmtKRW(lockedEscrow)}`,
+                  `IEUM Earn ${fmtKRW(earnSupplied)}  ·  Jeonse locked ${fmtKRW(lockedEscrow)}`
                 )}
               </p>
             </div>

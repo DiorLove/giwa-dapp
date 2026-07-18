@@ -29,7 +29,7 @@ export default function CreatePage() {
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const [members, setMembers] = useState(3);
-  const [amount, setAmount] = useState("500000");
+  const [amount, setAmount] = useState("");
   const [round, setRound] = useState(600);
   const [depositRounds, setDepositRounds] = useState(1);
   const [orderMode, setOrderMode] = useState(0); // 0=제비뽑기, 1=계주 지정
@@ -85,7 +85,7 @@ export default function CreatePage() {
   const depositAmt = Number(amount || 0) * depositRounds;
   const label = "text-xs uppercase tracking-[0.15em] text-white/35";
   const input =
-    "h-12 w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 text-sm text-white outline-none transition-colors [color-scheme:dark] focus:border-white/30";
+    "h-12 w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 text-sm text-white outline-none transition-colors [color-scheme:dark] placeholder:text-white/25 focus:border-white/30";
 
   return (
     <div className="min-h-screen bg-black">
@@ -129,6 +129,7 @@ export default function CreatePage() {
                 <input
                   type="text" inputMode="numeric" value={withCommas(amount)}
                   onChange={(e) => setAmount(onlyDigits(e.target.value))}
+                  placeholder={t("예) 500,000", "e.g. 500,000")}
                   className={`${input} pr-16`}
                 />
                 <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-xs text-white/35">

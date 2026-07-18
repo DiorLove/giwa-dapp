@@ -17,6 +17,7 @@ import {
   rayToApy,
   withCommas,
 } from "@/lib/contracts";
+import { HousePlus } from "lucide-react";
 import { AppNav } from "@/components/AppNav";
 import { AnimatedNumber, FadeUp } from "@/components/Motion";
 import { GuideSteps } from "@/components/Guide";
@@ -30,9 +31,9 @@ export default function EarnPage() {
   const { address: me } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
-  const [supplyAmt, setSupplyAmt] = useState("1000000");
-  const [collAmt, setCollAmt] = useState("2");
-  const [borrowAmt, setBorrowAmt] = useState("500000");
+  const [supplyAmt, setSupplyAmt] = useState("");
+  const [collAmt, setCollAmt] = useState("");
+  const [borrowAmt, setBorrowAmt] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -132,7 +133,7 @@ export default function EarnPage() {
 
   const label = "text-xs uppercase tracking-[0.15em] text-white/35";
   const input =
-    "h-12 w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 text-sm text-white outline-none transition-colors [color-scheme:dark] focus:border-white/30";
+    "h-12 w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 text-sm text-white outline-none transition-colors [color-scheme:dark] placeholder:text-white/25 focus:border-white/30";
   const primary = "pressable h-11 w-full rounded-full bg-white text-sm font-semibold text-black disabled:opacity-40";
   const ghost =
     "pressable h-11 w-full rounded-full border border-white/15 text-sm font-semibold text-white transition-colors hover:border-white/30 disabled:opacity-40";
@@ -293,6 +294,7 @@ export default function EarnPage() {
                 inputMode="numeric"
                 value={withCommas(supplyAmt)}
                 onChange={(e) => setSupplyAmt(onlyDigits(e.target.value))}
+                placeholder={t("예) 1,000,000", "e.g. 1,000,000")}
                 className={`${input} pr-16`}
               />
               <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-xs text-white/35">
@@ -346,6 +348,7 @@ export default function EarnPage() {
                 inputMode="decimal"
                 value={collAmt}
                 onChange={(e) => setCollAmt(e.target.value.replace(/[^\d.]/g, ""))}
+                placeholder={t("예) 2", "e.g. 2")}
                 className={`${input} pr-16`}
               />
               <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-xs text-white/35">
@@ -410,6 +413,44 @@ export default function EarnPage() {
                 </>
               )}
             </p>
+
+            {/* 역전세 안내 — 집주인이 이 대출을 언제·어떻게 쓰는지 */}
+            <div className="mt-5 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 md:p-5">
+              <p className="flex items-center gap-2 text-sm font-medium text-white/80">
+                <HousePlus size={16} strokeWidth={1.5} className="shrink-0 text-white/50" />
+                {t("전세가가 내렸다면 (역전세) — 이렇게 쓰세요", "Prices fell (reverse-jeonse)? Use it like this")}
+              </p>
+              <ol className="mt-3 flex flex-col gap-2 text-xs leading-relaxed text-white/45">
+                <li>
+                  <span className="text-white/60">1.</span>{" "}
+                  {t(
+                    "신규 전세금이 기존 보증금보다 적으면, 그 부족분만큼 mETH를 담보로 맡기고 여기서 대출받습니다.",
+                    "If the new deposit is smaller than the old one, lock mETH as collateral and borrow the shortfall here."
+                  )}
+                </li>
+                <li>
+                  <span className="text-white/60">2.</span>{" "}
+                  {t(
+                    "그 돈으로 기존 세입자에게 보증금을 전액 돌려줍니다. 세입자는 제때 100% 받고, 집주인은 목돈 없이 넘깁니다.",
+                    "Refund the outgoing tenant in full with it — they get 100% on time, you bridge the gap without a lump sum."
+                  )}
+                </li>
+                <li>
+                  <span className="text-white/60">3.</span>{" "}
+                  {t(
+                    "이후 새 세입자 전세금이나 여유 자금으로 상환하면 됩니다. 부담은 대출 이자뿐입니다.",
+                    "Repay later from the next deposit or your own funds — your only cost is the loan interest."
+                  )}
+                </li>
+                <li className="text-white/35">
+                  {t(
+                    "⚠ 담보(mETH) 가격이 크게 내려 Health Factor가 1 밑으로 가면 청산됩니다. 위 담보 예치·전액 상환으로 미리 방어하세요.",
+                    "⚠ If collateral (mETH) drops enough that Health Factor falls below 1, you're liquidated — defend early by adding collateral or repaying above."
+                  )}
+                </li>
+              </ol>
+            </div>
+
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="relative">
                 <input
@@ -417,6 +458,7 @@ export default function EarnPage() {
                   inputMode="numeric"
                   value={withCommas(borrowAmt)}
                   onChange={(e) => setBorrowAmt(onlyDigits(e.target.value))}
+                  placeholder={t("예) 500,000", "e.g. 500,000")}
                   className={`${input} pr-16`}
                 />
                 <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-xs text-white/35">
