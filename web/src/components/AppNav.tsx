@@ -30,7 +30,7 @@ export function AppNav() {
       wasConnected.current = true;
     } else if (wasConnected.current) {
       wasConnected.current = false;
-      router.push("/jeonse");
+      router.push("/dashboard");
     }
   }, [isConnected, router]);
 

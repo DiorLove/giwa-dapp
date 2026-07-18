@@ -120,7 +120,7 @@ export function Hero() {
             </a>
             <LangToggle className="hidden sm:flex" />
             <Link
-              href="/jeonse"
+              href="/dashboard"
               className="liquid-glass glass-hover pressable rounded-full px-6 py-2 text-sm font-medium text-white"
             >
               {t("앱 실행", "Launch App")}
