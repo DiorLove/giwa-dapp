@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { parseUnits, decodeEventLog, isAddress } from "viem";
-import { JEONSE_FACTORY_ADDRESS, errMsg, jeonseFactoryAbi } from "@/lib/contracts";
+import { JEONSE_FACTORY_ADDRESS, errMsg, jeonseFactoryAbi, onlyDigits, withCommas } from "@/lib/contracts";
 import { AppNav } from "@/components/AppNav";
 import { InfoTip } from "@/components/InfoTip";
 import { FadeUp } from "@/components/Motion";
@@ -140,9 +140,10 @@ export default function JeonseCreate() {
                 <span className={label}>{t("신규 전세금", "New jeonse deposit")}</span>
                 <div className="relative">
                   <input
-                    type="number"
-                    value={jeonse}
-                    onChange={(e) => setJeonse(e.target.value)}
+                    type="text"
+                    inputMode="numeric"
+                    value={withCommas(jeonse)}
+                    onChange={(e) => setJeonse(onlyDigits(e.target.value))}
                     className={`${input} pr-16`}
                   />
                   <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-xs text-white/35">
@@ -154,9 +155,10 @@ export default function JeonseCreate() {
                 <span className={label}>{t("반환할 기존 보증금", "Old deposit to refund")}</span>
                 <div className="relative">
                   <input
-                    type="number"
-                    value={refund}
-                    onChange={(e) => setRefund(e.target.value)}
+                    type="text"
+                    inputMode="numeric"
+                    value={withCommas(refund)}
+                    onChange={(e) => setRefund(onlyDigits(e.target.value))}
                     className={`${input} pr-16`}
                   />
                   <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-xs text-white/35">

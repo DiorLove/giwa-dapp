@@ -1,7 +1,6 @@
 "use client";
-import { useRef } from "react";
 import Link from "next/link";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 
@@ -32,20 +31,18 @@ const CARDS = [
 
 export function ServicesSection() {
   const { t } = useLang();
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
     <section
       id="products"
-      ref={ref}
       className="relative overflow-hidden bg-black px-6 py-28 md:py-40"
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.02)_0%,_transparent_60%)]" />
       <div className="relative mx-auto max-w-6xl">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.7, ease: EASE }}
           className="mb-12 flex items-end justify-between md:mb-16"
         >
@@ -65,7 +62,8 @@ export function ServicesSection() {
             <motion.div
               key={card.title[0]}
               initial={{ opacity: 0, y: 50 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.15 }}
               transition={{ duration: 0.8, delay: i * 0.15, ease: EASE }}
               className="liquid-glass group overflow-hidden rounded-3xl"
             >

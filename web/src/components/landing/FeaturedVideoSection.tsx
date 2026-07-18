@@ -1,6 +1,5 @@
 "use client";
-import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
 import { explorerUrl } from "@/lib/contracts";
 import { useLang } from "@/lib/i18n";
 
@@ -9,20 +8,18 @@ const VIDEO = "/videos/v2.mp4";
 
 export function FeaturedVideoSection() {
   const { t } = useLang();
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
     <section
       id="how"
-      ref={ref}
       className="overflow-hidden bg-black px-6 pt-6 pb-20 md:pt-10 md:pb-32"
     >
       <motion.div
         initial={{ opacity: 0, y: 60 }}
-        animate={inView ? { opacity: 1, y: 0 } : {}}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.15 }}
         transition={{ duration: 0.9, ease: EASE }}
-        className="relative mx-auto aspect-video max-w-6xl overflow-hidden rounded-3xl"
+        className="relative mx-auto aspect-video max-w-6xl overflow-hidden rounded-3xl bg-white/[0.03]"
       >
         <video
           src={VIDEO}
@@ -32,6 +29,10 @@ export function FeaturedVideoSection() {
           playsInline
           preload="auto"
           className="h-full w-full object-cover"
+          onLoadedData={(e) => {
+            const v = e.currentTarget;
+            v.play().catch(() => {});
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         <div className="absolute right-0 bottom-0 left-0 flex flex-col items-start justify-between gap-6 p-6 md:flex-row md:items-end md:p-10">

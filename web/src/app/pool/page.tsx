@@ -9,6 +9,8 @@ import {
   errMsg,
   fmtKRW,
   mockKrwAbi,
+  onlyDigits,
+  withCommas,
 } from "@/lib/contracts";
 import { AppNav } from "@/components/AppNav";
 import { AnimatedNumber, FadeUp } from "@/components/Motion";
@@ -163,9 +165,10 @@ export default function PoolPage() {
             </p>
             <div className="relative mt-5">
               <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                type="text"
+                inputMode="numeric"
+                value={withCommas(amount)}
+                onChange={(e) => setAmount(onlyDigits(e.target.value))}
                 className={`${input} pr-16`}
               />
               <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-xs text-white/35">

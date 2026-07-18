@@ -105,6 +105,12 @@ export const fmtKRW = (wei: bigint) =>
 
 export const shortAddr = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
+/** 금액 입력 표시용 — 숫자만 남기고 천단위 콤마. (정밀도 손실 없이 문자열 처리) */
+export const withCommas = (s: string) =>
+  s.replace(/[^\d]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+/** 콤마 등 제거하고 순수 숫자 문자열만 (상태 저장·parseUnits 용) */
+export const onlyDigits = (s: string) => s.replace(/[^\d]/g, "");
+
 export const explorerUrl = (path: string) =>
   `https://sepolia-explorer.giwa.io/${path}`;
 

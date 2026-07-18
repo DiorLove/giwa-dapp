@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePublicClient, useWriteContract } from "wagmi";
 import { parseUnits, decodeEventLog } from "viem";
-import { FACTORY_ADDRESS, errMsg, factoryAbi } from "@/lib/contracts";
+import { FACTORY_ADDRESS, errMsg, factoryAbi, onlyDigits, withCommas } from "@/lib/contracts";
 import { AppNav } from "@/components/AppNav";
 import { Dropdown } from "@/components/Dropdown";
 import { InfoTip } from "@/components/InfoTip";
@@ -127,8 +127,8 @@ export default function CreatePage() {
               <span className={label}>{t("회당 납입액", "Contribution per round")}</span>
               <div className="relative">
                 <input
-                  type="number" inputMode="numeric" value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  type="text" inputMode="numeric" value={withCommas(amount)}
+                  onChange={(e) => setAmount(onlyDigits(e.target.value))}
                   className={`${input} pr-16`}
                 />
                 <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-xs text-white/35">

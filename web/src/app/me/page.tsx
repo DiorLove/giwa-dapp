@@ -14,6 +14,8 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Check,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Fuel,
   Landmark,
@@ -84,6 +86,22 @@ export default function MyPage() {
   const [walletOpen, setWalletOpen] = useState(false);
   const [flows, setFlows] = useState<Flow[]>([]);
   const [flowsLoading, setFlowsLoading] = useState(false);
+  // 페이지네이션: PC 10개 / 모바일 5개
+  const [isMobile, setIsMobile] = useState(false);
+  const [flowPage, setFlowPage] = useState(0);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const on = () => setIsMobile(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  const perPage = isMobile ? 5 : 10;
+  const flowPageCount = Math.ceil(flows.length / perPage) || 1;
+  useEffect(() => {
+    if (flowPage >= flowPageCount) setFlowPage(0);
+  }, [flowPageCount, flowPage]);
+  const pagedFlows = flows.slice(flowPage * perPage, flowPage * perPage + perPage);
 
   // mKRW Transfer 로그에서 자금 흐름 이력 구성 (받음/보냄/발급)
   useEffect(() => {
@@ -96,6 +114,7 @@ export default function MyPage() {
         // 최근 이력 12건을 채우거나 최대 청크 수에 도달하면 멈춘다.
         const CHUNK = 90_000n;
         const MAX_CHUNKS = 8;
+        const TARGET = 40; // 페이지네이션용으로 넉넉히 수집
         const latest = await publicClient.getBlockNumber();
         const logs: {
           blockNumber: bigint | null;
@@ -104,7 +123,7 @@ export default function MyPage() {
           args: { from?: `0x${string}`; to?: `0x${string}`; value?: bigint };
         }[] = [];
         let hi = latest;
-        for (let c = 0; c < MAX_CHUNKS && logs.length < 12; c++) {
+        for (let c = 0; c < MAX_CHUNKS && logs.length < TARGET; c++) {
           const lo = hi > CHUNK ? hi - CHUNK : 0n;
           const [ins, outs] = await Promise.all([
             publicClient.getLogs({
@@ -133,7 +152,7 @@ export default function MyPage() {
           if (ba !== bb) return bb > ba ? 1 : -1;
           return (b.logIndex ?? 0) - (a.logIndex ?? 0);
         });
-        const top = logs.slice(0, 12);
+        const top = logs.slice(0, TARGET);
 
         // 블록 타임스탬프 (중복 제거 후 배치 조회)
         const blockNums = [
@@ -476,7 +495,7 @@ export default function MyPage() {
                     {t("아직 자금 이동 내역이 없습니다.", "No money movements yet.")}
                   </p>
                 )}
-                {flows.map((f, i) => {
+                {pagedFlows.map((f, i) => {
                   const inbound = f.dir === "in" || f.dir === "mint";
                   const meta =
                     f.dir === "mint"
@@ -518,6 +537,29 @@ export default function MyPage() {
                   );
                 })}
               </div>
+              {flowPageCount > 1 && (
+                <div className="mt-4 flex items-center justify-center gap-4">
+                  <button
+                    disabled={flowPage === 0}
+                    onClick={() => setFlowPage((p) => Math.max(0, p - 1))}
+                    aria-label={t("이전", "Previous")}
+                    className="pressable rounded-full border border-white/10 p-2 text-white/60 transition-colors hover:border-white/25 hover:text-white disabled:opacity-30"
+                  >
+                    <ChevronLeft size={15} />
+                  </button>
+                  <span className="text-xs text-white/40 tabular-nums">
+                    {flowPage + 1} / {flowPageCount}
+                  </span>
+                  <button
+                    disabled={flowPage >= flowPageCount - 1}
+                    onClick={() => setFlowPage((p) => Math.min(flowPageCount - 1, p + 1))}
+                    aria-label={t("다음", "Next")}
+                    className="pressable rounded-full border border-white/10 p-2 text-white/60 transition-colors hover:border-white/25 hover:text-white disabled:opacity-30"
+                  >
+                    <ChevronRight size={15} />
+                  </button>
+                </div>
+              )}
             </FadeUp>
 
             {/* 내 계모임 */}

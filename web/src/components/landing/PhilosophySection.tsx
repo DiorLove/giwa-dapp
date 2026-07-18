@@ -1,6 +1,5 @@
 "use client";
-import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
 import { useLang } from "@/lib/i18n";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
@@ -8,15 +7,14 @@ const VIDEO = "/videos/v3.mp4";
 
 export function PhilosophySection() {
   const { t } = useLang();
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section ref={ref} className="overflow-hidden bg-black px-6 py-28 md:py-40">
+    <section className="overflow-hidden bg-black px-6 py-28 md:py-40">
       <div className="mx-auto max-w-6xl">
         <motion.h2
           initial={{ opacity: 0, y: 40 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.8, ease: EASE }}
           className="mb-16 text-5xl tracking-tight text-white md:mb-24 md:text-7xl lg:text-8xl"
         >
@@ -28,9 +26,10 @@ export function PhilosophySection() {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-12">
           <motion.div
             initial={{ opacity: 0, x: -40 }}
-            animate={inView ? { opacity: 1, x: 0 } : {}}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
             transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
-            className="aspect-[4/3] overflow-hidden rounded-3xl"
+            className="aspect-[4/3] overflow-hidden rounded-3xl bg-white/[0.03]"
           >
             <video
               src={VIDEO}
@@ -45,7 +44,8 @@ export function PhilosophySection() {
 
           <motion.div
             initial={{ opacity: 0, x: 40 }}
-            animate={inView ? { opacity: 1, x: 0 } : {}}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
             transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
             className="flex flex-col justify-center"
           >
