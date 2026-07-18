@@ -187,7 +187,7 @@ export function Hero() {
       >
         {[
           { Icon: Code2, href: "https://github.com/DiorLove/giwa-dapp-IEUM", label: "GitHub" },
-          { Icon: AtSign, href: "https://x.com/ieum_giwa", label: "X" },
+          { Icon: AtSign, href: "https://x.com/IEUM_GIWA", label: "X" },
           { Icon: Globe, href: explorerUrl(""), label: "Explorer" },
         ].map(({ Icon, href, label }) => (
           <a
