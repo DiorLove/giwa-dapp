@@ -166,17 +166,17 @@ export default function Dashboard() {
                 )}
               </p>
             </div>
-            {/* 우측: 하이라인 구분 인라인 지표 */}
-            <dl className="flex items-stretch divide-x divide-white/[0.09] text-right">
+            {/* 우측: 하이라인 구분 인라인 지표 (모바일은 3등분으로 균등 배치) */}
+            <dl className="grid grid-cols-3 divide-x divide-white/[0.09] md:flex md:items-stretch">
               {[
                 { k: t("에스크로", "Escrows"), v: String(escrowCount), accent: false },
                 { k: t("계모임", "Circles"), v: String(circleCount), accent: false },
                 { k: t("풀 APY", "Pool APY"), v: `${poolApy.toFixed(1)}%`, accent: true },
               ].map((c) => (
-                <div key={c.k} className="px-5 first:pl-0 last:pr-0 md:px-6">
+                <div key={c.k} className="px-4 text-left first:pl-0 last:pr-0 md:px-6 md:text-right">
                   <dt className="text-[10px] uppercase tracking-[0.14em] text-white/30">{c.k}</dt>
                   <dd
-                    className={`mt-1.5 text-xl font-medium tabular-nums ${
+                    className={`mt-1.5 text-lg font-medium tabular-nums md:text-xl ${
                       c.accent ? "text-emerald-300" : "text-white"
                     }`}
                   >
