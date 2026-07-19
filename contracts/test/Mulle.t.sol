@@ -106,8 +106,12 @@ contract MulleTest is Test {
 
     function test_RandomStartShufflesOrder() public {
         _joinAll();
-        vm.roll(block.number + 10); // blockhash 확보
+        // 2단계 추첨: 커밋(start) → 다음 블록 이후 확정(drawOrder)
         vm.prank(org); mulle.start();
+        assertEq(uint8(mulle.state()), uint8(Mulle.State.Recruiting));
+        assertEq(mulle.drawBlock(), block.number + 1);
+        vm.roll(block.number + 2);
+        mulle.drawOrder(); // 누구나 확정 가능
         assertEq(uint8(mulle.state()), uint8(Mulle.State.Active));
         address[] memory order = mulle.getPayoutOrder();
         assertEq(order.length, 3);
@@ -133,8 +137,35 @@ contract MulleTest is Test {
         vm.prank(m2);
         vm.expectRevert(bytes("not organizer"));
         mulle.start();
-        // 개설자는 성공
+        // 개설자는 성공 (커밋) → 다음 블록에 확정
         vm.prank(org); mulle.start();
+        vm.roll(block.number + 2);
+        mulle.drawOrder();
+        assertEq(uint8(mulle.state()), uint8(Mulle.State.Active));
+    }
+
+    function test_DrawCannotRunInCommitBlock() public {
+        _joinAll();
+        vm.prank(org); mulle.start();
+        // 커밋 직후(해시 미존재) 확정 불가 → 결과 예측·그라인딩 차단
+        vm.expectRevert(bytes("wait next block"));
+        mulle.drawOrder();
+        // 재커밋도 불가
+        vm.prank(org);
+        vm.expectRevert(bytes("draw committed"));
+        mulle.start();
+    }
+
+    function test_DrawRearmsAfter256Blocks() public {
+        _joinAll();
+        vm.prank(org); mulle.start();
+        uint256 committed = mulle.drawBlock();
+        vm.roll(committed + 300); // 블록해시 소실
+        mulle.drawOrder(); // 재커밋으로 처리
+        assertEq(uint8(mulle.state()), uint8(Mulle.State.Recruiting));
+        assertEq(mulle.drawBlock(), block.number + 1);
+        vm.roll(block.number + 2);
+        mulle.drawOrder();
         assertEq(uint8(mulle.state()), uint8(Mulle.State.Active));
     }
 
@@ -206,8 +237,9 @@ contract MulleTest is Test {
 
     function _startRandom() internal {
         _joinAll();
-        vm.roll(block.number + 10);
-        vm.prank(org); mulle.start();
+        vm.prank(org); mulle.start(); // 커밋
+        vm.roll(block.number + 2);
+        mulle.drawOrder(); // 확정
     }
 
     function _payAll() internal {
@@ -381,8 +413,9 @@ contract MulleTest is Test {
             z.join();
             vm.stopPrank();
         }
-        vm.roll(block.number + 10);
         vm.prank(org); z.start();
+        vm.roll(block.number + 2);
+        z.drawOrder();
         vm.prank(org); z.pay();
         vm.prank(m2); z.pay();
         vm.warp(z.roundEnd(0));
@@ -408,8 +441,9 @@ contract MulleTest is Test {
             f.join();
             vm.stopPrank();
         }
-        vm.roll(block.number + 10);
         vm.prank(org); f.start();
+        vm.roll(block.number + 2);
+        f.drawOrder();
         vm.prank(org); f.pay();
         vm.prank(m2); f.pay();
         vm.prank(m3); f.pay();

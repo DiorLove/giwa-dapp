@@ -1,6 +1,6 @@
 "use client";
 import { use, useState } from "react";
-import { useAccount, usePublicClient, useReadContracts, useWriteContract } from "wagmi";
+import { useAccount, useBlockNumber, usePublicClient, useReadContracts, useWriteContract } from "wagmi";
 import { maxUint256 } from "viem";
 import { ArrowUpRight, Check, Copy, Share2 } from "lucide-react";
 import {
@@ -39,6 +39,7 @@ export default function KyePage({ params }: { params: Promise<{ address: string 
   const { address: kyeAddr } = use(params);
   const kye = kyeAddr as `0x${string}`;
   const { address: me, chainId } = useAccount();
+  const { data: blockNumber } = useBlockNumber({ watch: true });
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const [busy, setBusy] = useState<string | null>(null);
@@ -64,6 +65,7 @@ export default function KyePage({ params }: { params: Promise<{ address: string 
       { address: kye, abi: mulleAbi, functionName: "startTime" },
       { address: kye, abi: mulleAbi, functionName: "roundDuration" },
       { address: kye, abi: mulleAbi, functionName: "approvalCount" },
+      { address: kye, abi: mulleAbi, functionName: "drawBlock" },
     ],
     query: { refetchInterval: 4000 },
   });
@@ -84,6 +86,9 @@ export default function KyePage({ params }: { params: Promise<{ address: string 
   const startTime = Number((data?.[13]?.result as bigint | undefined) ?? 0n);
   const roundDuration = Number((data?.[14]?.result as bigint | undefined) ?? 0n);
   const approvalCount = (data?.[15]?.result as number | undefined) ?? 0;
+  const drawBlock = (data?.[16]?.result as bigint | undefined) ?? 0n;
+  // 커밋된 추첨 블록이 지났으면 누구나 확정(drawOrder) 가능
+  const drawReady = drawBlock > 0n && !!blockNumber && blockNumber > drawBlock;
 
   const paidQuery = useReadContracts({
     contracts: [
@@ -404,7 +409,9 @@ export default function KyePage({ params }: { params: Promise<{ address: string 
               </div>
             )}
 
-            {state === 0 && full && orderMode === 0 && isOrganizer && (
+            {/* Random 모드 2단계 추첨: (1) 개설자가 커밋 → (2) 다음 블록에 누구나 확정.
+                커밋 시점엔 시드가 될 블록해시가 아직 없어 결과 조작(그라인딩)이 불가능하다. */}
+            {state === 0 && full && orderMode === 0 && drawBlock === 0n && isOrganizer && (
               <button
                 disabled={!!busy}
                 className={`${primaryBtn} bg-white text-black`}
@@ -414,16 +421,33 @@ export default function KyePage({ params }: { params: Promise<{ address: string 
                   )
                 }
               >
-                {busy === "start" ? t("추첨 중", "Drawing") : t("개설자 추첨 — 온체인 제비뽑기 시작", "Organizer draw — start on-chain lottery")}
+                {busy === "start" ? t("커밋 중", "Committing") : t("추첨 시작 — 순번 커밋", "Start draw — commit")}
               </button>
             )}
-            {state === 0 && full && orderMode === 0 && !isOrganizer && (
+            {state === 0 && full && orderMode === 0 && drawBlock === 0n && !isOrganizer && (
               <p className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center text-sm leading-relaxed text-white/50">
                 {t(
-                  "정원이 찼습니다. 개설자가 온체인 추첨을 시작하면 순번이 정해집니다.",
-                  "The circle is full. The organizer will start the on-chain draw to set the payout order."
+                  "정원이 찼습니다. 개설자가 추첨을 커밋하면, 다음 블록에서 순번이 조작 없이 확정됩니다.",
+                  "The circle is full. Once the organizer commits the draw, the order is fixed tamper-proof in the next block."
                 )}
               </p>
+            )}
+            {state === 0 && full && orderMode === 0 && drawBlock > 0n && (
+              <button
+                disabled={!!busy || !drawReady}
+                className={`${primaryBtn} ${drawReady ? "bg-white text-black" : "border border-white/10 text-white/40"}`}
+                onClick={() =>
+                  run("draw", () =>
+                    writeContractAsync({ address: kye, abi: mulleAbi, functionName: "drawOrder" })
+                  )
+                }
+              >
+                {busy === "draw"
+                  ? t("확정 중", "Drawing")
+                  : drawReady
+                    ? t("순번 확정 — 제비뽑기 실행 (누구나 가능)", "Reveal order — anyone can run")
+                    : t("추첨 커밋됨 — 다음 블록 대기 중…", "Draw committed — waiting for next block…")}
+              </button>
             )}
 
             {state === 0 && full && orderMode === 1 && isOrganizer && !orderProposed && (

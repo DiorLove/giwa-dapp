@@ -34,6 +34,8 @@ import {
   LEGACY_JEONSE_FACTORY_ADDRESS,
   LEGACY_JEONSE_FACTORY_ADDRESS_2,
   LEGACY_JEONSE_FACTORY_ADDRESS_3,
+  LEGACY_JEONSE_FACTORY_ADDRESS_4,
+  LEGACY_FACTORY_ADDRESS_2,
   MOCKKRW_ADDRESS,
   earnAbi,
   explorerUrl,
@@ -212,6 +214,8 @@ export default function MyPage() {
       { address: MOCKKRW_ADDRESS, abi: mockKrwAbi, functionName: "balanceOf", args: [me] },
       { address: LEGACY_JEONSE_FACTORY_ADDRESS_2, abi: jeonseFactoryAbi, functionName: "getAll" },
       { address: LEGACY_JEONSE_FACTORY_ADDRESS_3, abi: jeonseFactoryAbi, functionName: "getAll" },
+      { address: LEGACY_JEONSE_FACTORY_ADDRESS_4, abi: jeonseFactoryAbi, functionName: "getAll" },
+      { address: LEGACY_FACTORY_ADDRESS_2, abi: factoryAbi, functionName: "getAll" },
     ],
     query: { enabled, refetchInterval: enabled ? 5000 : undefined },
   });
@@ -225,8 +229,10 @@ export default function MyPage() {
   const g3 = useSticky(base?.[3]?.result as `0x${string}`[] | undefined) ?? [];
   const g6 = useSticky(base?.[6]?.result as `0x${string}`[] | undefined) ?? [];
   const g7 = useSticky(base?.[7]?.result as `0x${string}`[] | undefined) ?? [];
-  const circles = [...g1, ...g0];
-  const escrows = [...g3, ...g6, ...g7, ...g2];
+  const g8 = useSticky(base?.[8]?.result as `0x${string}`[] | undefined) ?? [];
+  const g9 = useSticky(base?.[9]?.result as `0x${string}`[] | undefined) ?? [];
+  const circles = [...g9, ...g1, ...g0];
+  const escrows = [...g3, ...g6, ...g7, ...g8, ...g2];
   // sticky: 일시적 RPC 실패로 값이 0으로 깜빡이는 것을 방지 (직전 유효값 유지)
   const poolValue = useSticky(base?.[4]?.result as bigint | undefined) ?? 0n;
   const balance = useSticky(base?.[5]?.result as bigint | undefined) ?? 0n;

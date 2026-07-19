@@ -4,6 +4,10 @@ pragma solidity ^0.8.24;
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {JeonseEscrow} from "./JeonseEscrow.sol";
 
+interface IEscrowAuthorizer {
+    function authorizeEscrow(address escrow) external;
+}
+
 /// @title 이음 전세 에스크로 팩토리 — 집주인이 에스크로를 개설한다
 contract JeonseFactory {
     IERC20 public immutable token;
@@ -38,6 +42,8 @@ contract JeonseFactory {
             jeonseAmount, refundAmount, settleDate, treasury, settleFeeBps
         );
         allEscrows.push(address(esc));
+        // 브리지 풀 허용 목록에 등록 — 팩토리 산 에스크로만 선지급 가능
+        IEscrowAuthorizer(bridgePool).authorizeEscrow(address(esc));
         emit EscrowCreated(address(esc), msg.sender, tenantIn, tenantOut);
         return address(esc);
     }

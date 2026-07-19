@@ -1,10 +1,13 @@
 import { parseAbi } from "viem";
 
 export const MOCKKRW_ADDRESS = process.env.NEXT_PUBLIC_MOCKKRW_ADDRESS as `0x${string}`;
-export const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_FACTORY_ADDRESS as `0x${string}`;
-// 역전세 부족분 톱업(coverShortfall) 지원 팩토리 — 신규 에스크로는 IeumEarn 을 브리지 풀로 사용
+// 계모임 팩토리 — 조작 불가 2단계 추첨(start→drawOrder) 보안 패치본
+export const FACTORY_ADDRESS =
+  "0xFc6cc4eEa2e8dAb1318d52482db82e68873F24a3" as `0x${string}`;
+// 위조 에스크로 브리지 드레인 차단 — 팩토리 등록(authorizeEscrow) 기반 보안 패치본.
+// 신규 에스크로는 IeumEarn v3 를 브리지 풀로 사용
 export const JEONSE_FACTORY_ADDRESS =
-  "0x491cE6Cd7ba9493F3624877e29F6F8C202588991" as `0x${string}`;
+  "0x6b0e095BC32464173a9A7Bf62bc500d3aCE6616D" as `0x${string}`;
 export const BRIDGE_POOL_ADDRESS = process.env
   .NEXT_PUBLIC_BRIDGE_POOL_ADDRESS as `0x${string}`;
 
@@ -13,6 +16,9 @@ export const BRIDGE_POOL_ADDRESS = process.env
 // LEGACY_JEONSE_FACTORY: 인플레이션 방어 패치 전 v2 전세 팩토리(데모 거래 보존용).
 export const LEGACY_FACTORY_ADDRESS =
   "0x9CB12AD424Ffd1F0349a338631166E087a3dDF70" as `0x${string}`;
+// 2단계 추첨 보안 패치 전 계모임 팩토리 — 기존 계 보존용으로 목록에 병합
+export const LEGACY_FACTORY_ADDRESS_2 =
+  "0xf62cF1562CB15Ab3c48776B9d13F2081cC1B785C" as `0x${string}`;
 export const LEGACY_JEONSE_FACTORY_ADDRESS =
   "0x5622e3B98c04507E2185667131C75344Fe077012" as `0x${string}`;
 // 직전 팩토리(구 BridgePool 사용) — 기존 에스크로 보존용으로 목록에 병합
@@ -21,10 +27,13 @@ export const LEGACY_JEONSE_FACTORY_ADDRESS_2 =
 // 역전세 톱업 지원 전 통합 팩토리 — 기존 에스크로 보존용으로 목록에 병합
 export const LEGACY_JEONSE_FACTORY_ADDRESS_3 =
   "0xD4dD00DB42051B50c4d9a423df8a4EB62C59204D" as `0x${string}`;
+// 위조 에스크로 드레인 차단 패치 전 통합 팩토리 — 기존 에스크로 보존용으로 목록에 병합
+export const LEGACY_JEONSE_FACTORY_ADDRESS_4 =
+  "0x491cE6Cd7ba9493F3624877e29F6F8C202588991" as `0x${string}`;
 
-// 이음 Earn 통합 머니마켓 (예치·대출 + 브리지 선지급) — GIWA Sepolia v2
+// 이음 Earn 통합 머니마켓 (예치·대출 + 브리지 선지급) — GIWA Sepolia v3 (보안 패치)
 export const EARN_ADDRESS =
-  "0x9B0363Ea96b39749f17e95FB99Eb3730338A3875" as `0x${string}`;
+  "0x81C5b85AC71beFB1586a72555347330B6664fe24" as `0x${string}`;
 export const METH_ADDRESS =
   "0x9AaB1E96a0E800beA9E1dC2aBc0378067b375296" as `0x${string}`;
 export const ORACLE_ADDRESS =
@@ -67,8 +76,10 @@ export const mulleAbi = parseAbi([
   "function orderProposed() view returns (bool)",
   "function orderApproved(address) view returns (bool)",
   "function approvalCount() view returns (uint8)",
+  "function drawBlock() view returns (uint256)",
   "function join()",
   "function start()",
+  "function drawOrder()",
   "function proposeOrder(address[] order)",
   "function approveOrder()",
   "function pay()",

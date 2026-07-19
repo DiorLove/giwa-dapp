@@ -8,6 +8,7 @@ import {
   LEGACY_JEONSE_FACTORY_ADDRESS,
   LEGACY_JEONSE_FACTORY_ADDRESS_2,
   LEGACY_JEONSE_FACTORY_ADDRESS_3,
+  LEGACY_JEONSE_FACTORY_ADDRESS_4,
   BRIDGE_POOL_ADDRESS,
   EARN_ADDRESS,
   earnAbi,
@@ -60,10 +61,16 @@ export default function JeonseList() {
     abi: jeonseFactoryAbi,
     functionName: "getAll",
   });
+  const { data: legacy4 } = useReadContract({
+    address: LEGACY_JEONSE_FACTORY_ADDRESS_4,
+    abi: jeonseFactoryAbi,
+    functionName: "getAll",
+  });
   const escrows = [
     ...((legacy ?? []) as `0x${string}`[]),
     ...((legacy2 ?? []) as `0x${string}`[]),
     ...((legacy3 ?? []) as `0x${string}`[]),
+    ...((legacy4 ?? []) as `0x${string}`[]),
     ...((all ?? []) as `0x${string}`[]),
   ];
 

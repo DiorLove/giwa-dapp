@@ -59,6 +59,12 @@ contract IeumEarn {
     uint256 public bridgeOutstanding; // 상환 예정 브리지 원금 합계
     mapping(address => uint256) public bridgeDebt; // escrow => 상환 예정액
 
+    // 신뢰된 에스크로 검증: 팩토리가 만든 에스크로만 브리지 가능.
+    // (임의 컨트랙트가 에스크로 인터페이스를 흉내 내 refundAmount 를 부풀려
+    //  풀 유동성을 담보 없이 빼가는 공격을 차단)
+    address public escrowFactory; // 트레저리가 1회 설정
+    mapping(address => bool) public authorizedEscrow;
+
     event Supplied(address indexed user, uint256 amount, uint256 shares);
     event Withdrawn(address indexed user, uint256 amount, uint256 shares);
     event CollateralDeposited(address indexed user, uint256 amount);
@@ -69,6 +75,8 @@ contract IeumEarn {
     event FeesClaimed(uint256 amount);
     event BridgeAdvanced(address indexed escrow, address indexed tenantOut, uint256 advanced, uint256 fee);
     event BridgeRepaid(address indexed escrow, uint256 amount);
+    event EscrowFactorySet(address indexed factory);
+    event EscrowAuthorized(address indexed escrow);
 
     constructor(
         IERC20 _asset,
@@ -284,9 +292,26 @@ contract IeumEarn {
 
     // ───────────────────────── 브리지 선지급 (전세 연계) ─────────────────────────
 
+    /// 트레저리가 신뢰된 에스크로 팩토리를 1회 지정한다.
+    function setEscrowFactory(address factory) external {
+        require(msg.sender == treasury, "not treasury");
+        require(escrowFactory == address(0), "already set");
+        require(factory != address(0), "zero factory");
+        escrowFactory = factory;
+        emit EscrowFactorySet(factory);
+    }
+
+    /// 팩토리 전용: 방금 생성한 에스크로를 브리지 허용 목록에 등록.
+    function authorizeEscrow(address escrow) external {
+        require(msg.sender == escrowFactory, "not factory");
+        authorizedEscrow[escrow] = true;
+        emit EscrowAuthorized(escrow);
+    }
+
     /// 기존 세입자(A)가 선지급 요청. 다음 세입자의 전세금이 이미 락된 에스크로에만 나간다.
     /// 같은 유동성을 쓰므로 예치자는 대출 이자 + 브리지 수수료를 함께 받는다.
     function bridge(address escrowAddr) external {
+        require(authorizedEscrow[escrowAddr], "unknown escrow");
         JeonseEscrow esc = JeonseEscrow(escrowAddr);
         require(esc.bridgePool() == address(this), "wrong pool");
         require(esc.state() == JeonseEscrow.State.Funded, "escrow not funded");
@@ -309,6 +334,7 @@ contract IeumEarn {
 
     /// 에스크로 정산 콜백 — 상환 예정 채권 소멸 (토큰은 settle 이 이미 전송)
     function onRepaid() external {
+        require(authorizedEscrow[msg.sender], "unknown escrow");
         uint256 debt = bridgeDebt[msg.sender];
         require(debt > 0, "no debt");
         bridgeDebt[msg.sender] = 0;

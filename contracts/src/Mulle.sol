@@ -40,9 +40,14 @@ contract Mulle {
     mapping(address => bool) public orderApproved;
     uint8 public approvalCount;
 
+    // Random 모드 2단계 추첨: 커밋 시점엔 미래 블록해시를 알 수 없어
+    // 계주가 유리한 순번이 나올 때까지 재시도(grinding)하는 것을 차단한다.
+    uint256 public drawBlock; // 추첨에 쓸 블록 번호 (0 = 커밋 전)
+
     uint256 public constant SETTLE_REWARD_BPS = 10; // settle() 호출 보상 = 곗돈의 0.1%
 
     event MemberJoined(address indexed member);
+    event DrawCommitted(uint256 blockNumber);
     event Started(address[] payoutOrder);
     event OrderProposed(address[] order);
     event OrderApproved(address indexed member);
@@ -109,14 +114,32 @@ contract Mulle {
 
     // ---------- 시작 ----------
 
-    /// Random 모드: 정원이 차면 개설자만 호출 → 온체인 제비뽑기로 순번 확정
+    /// Random 모드 1단계: 정원이 차면 개설자가 추첨을 커밋.
+    /// 시드가 될 블록해시는 아직 존재하지 않아 결과를 미리 알 수 없다.
     function start() external {
         require(state == State.Recruiting, "not recruiting");
         require(orderMode == OrderMode.Random, "assigned mode");
         require(msg.sender == organizer, "not organizer");
         require(members.length == maxMembers, "not full");
+        require(drawBlock == 0, "draw committed");
+        drawBlock = block.number + 1;
+        emit DrawCommitted(drawBlock);
+    }
+
+    /// Random 모드 2단계: 커밋 블록이 지나면 누구나 호출 → 그 블록해시로 순번 확정.
+    /// 256블록이 지나 해시가 소실됐으면 자동으로 다음 블록에 재커밋한다.
+    function drawOrder() external {
+        require(state == State.Recruiting, "not recruiting");
+        require(drawBlock != 0, "no draw committed");
+        require(block.number > drawBlock, "wait next block");
+        bytes32 bh = blockhash(drawBlock);
+        if (bh == bytes32(0)) {
+            drawBlock = block.number + 1;
+            emit DrawCommitted(drawBlock);
+            return;
+        }
         address[] memory order = members;
-        uint256 seed = uint256(keccak256(abi.encode(blockhash(block.number - 1), address(this))));
+        uint256 seed = uint256(keccak256(abi.encode(bh, address(this))));
         for (uint256 i = order.length - 1; i > 0; i--) {
             uint256 j = seed % (i + 1);
             (order[i], order[j]) = (order[j], order[i]);

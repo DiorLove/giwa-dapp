@@ -8,6 +8,31 @@ import {MockETH} from "../src/MockETH.sol";
 import {PriceOracle} from "../src/PriceOracle.sol";
 import {IeumEarn, IPriceOracle} from "../src/IeumEarn.sol";
 import {JeonseEscrow} from "../src/JeonseEscrow.sol";
+import {JeonseFactory} from "../src/JeonseFactory.sol";
+
+/// 공격용 가짜 에스크로 — 진짜 인터페이스를 흉내 내 풀 유동성 탈취를 시도
+contract FakeEscrow {
+    address public immutable bridgePool;
+    address public immutable tenantOut;
+    uint256 public immutable refundAmount;
+    bool public constant bridged = false;
+
+    constructor(address _pool, address _tenantOut, uint256 _refund) {
+        bridgePool = _pool;
+        tenantOut = _tenantOut;
+        refundAmount = _refund;
+    }
+
+    function state() external pure returns (JeonseEscrow.State) {
+        return JeonseEscrow.State.Funded;
+    }
+
+    function registerBridge() external {}
+
+    function attackOnRepaid() external {
+        IeumEarn(bridgePool).onRepaid();
+    }
+}
 
 contract IeumEarnTest is Test {
     MockKRW krw;
@@ -221,9 +246,18 @@ contract IeumEarnTest is Test {
         assertEq(earn.reserveAccrued(), 0);
     }
 
+    /// 신뢰된 팩토리를 통해 에스크로를 만들고 풀에 등록한다.
+    function _deployFactory() internal returns (JeonseFactory) {
+        JeonseFactory factory = new JeonseFactory(IERC20(address(krw)), address(earn), treasury, 5);
+        vm.prank(treasury);
+        earn.setEscrowFactory(address(factory));
+        return factory;
+    }
+
     // ── 브리지 선지급이 같은 풀 유동성으로 동작 + 수수료가 예치자·트레저리로 ──
     function test_BridgeThroughEarnPool() public {
         _supply(lp, 20_000_000e18);
+        JeonseFactory factory = _deployFactory();
         address landlord = makeAddr("landlord");
         address tin = makeAddr("tin");
         address tout = makeAddr("tout");
@@ -231,8 +265,9 @@ contract IeumEarnTest is Test {
         uint256 refund = 10_000_000e18;
         uint256 settleDate = block.timestamp + 7 days;
 
-        JeonseEscrow esc = new JeonseEscrow(
-            IERC20(address(krw)), address(earn), landlord, tin, tout, jeonse, refund, settleDate, treasury, 5
+        vm.prank(landlord);
+        JeonseEscrow esc = JeonseEscrow(
+            factory.createEscrow(tin, tout, jeonse, refund, settleDate)
         );
         _fundKrw(tin, jeonse);
         vm.startPrank(tin);
@@ -258,6 +293,42 @@ contract IeumEarnTest is Test {
         esc.settle();
         assertEq(earn.bridgeOutstanding(), 0, "repaid");
         assertEq(earn.bridgeDebt(address(esc)), 0);
+    }
+
+    // ── 보안: 위조 에스크로는 브리지 선지급을 못 받는다 (Vuln 1) ──
+    function test_FakeEscrowCannotDrainPool() public {
+        _supply(lp, 20_000_000e18);
+        _deployFactory();
+        address attacker = makeAddr("attacker");
+        // 공격자가 refundAmount 를 풀 현금 수준으로 부풀린 가짜 에스크로 배포
+        FakeEscrow fake = new FakeEscrow(address(earn), attacker, 20_000_000e18);
+        vm.prank(attacker);
+        vm.expectRevert(bytes("unknown escrow"));
+        earn.bridge(address(fake));
+        assertEq(krw.balanceOf(attacker), 0, "no funds drained");
+    }
+
+    // ── 보안: 미인가 주소는 onRepaid 로 채권을 위조 소멸시킬 수 없다 (Vuln 2) ──
+    function test_UnauthorizedOnRepaidReverts() public {
+        _supply(lp, 20_000_000e18);
+        _deployFactory();
+        FakeEscrow fake = new FakeEscrow(address(earn), address(this), 1_000_000e18);
+        vm.expectRevert(bytes("unknown escrow"));
+        fake.attackOnRepaid();
+    }
+
+    // ── 보안: 팩토리만 authorizeEscrow 호출 가능 ──
+    function test_OnlyFactoryAuthorizes() public {
+        _deployFactory();
+        vm.expectRevert(bytes("not factory"));
+        earn.authorizeEscrow(makeAddr("rogue"));
+    }
+
+    function test_EscrowFactorySetOnce() public {
+        JeonseFactory factory = _deployFactory();
+        vm.prank(treasury);
+        vm.expectRevert(bytes("already set"));
+        earn.setEscrowFactory(address(factory));
     }
 
     // ── 출금: 유동성이 대출로 나가 있으면 제한 ──

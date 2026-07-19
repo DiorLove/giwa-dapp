@@ -42,6 +42,8 @@ contract DeployUnified is Script {
         );
         JeonseFactory jeonseFactory =
             new JeonseFactory(IERC20(MOCKKRW), address(earn), treasury, JEONSE_SETTLE_FEE_BPS);
+        // 브리지 선지급은 이 팩토리가 만든 에스크로만 허용 (위조 에스크로 드레인 차단)
+        earn.setEscrowFactory(address(jeonseFactory));
         vm.stopBroadcast();
         console.log("IeumEarn v2:  ", address(earn));
         console.log("JeonseFactory:", address(jeonseFactory));

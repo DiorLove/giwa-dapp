@@ -8,9 +8,11 @@ import {
   FACTORY_ADDRESS,
   JEONSE_FACTORY_ADDRESS,
   LEGACY_FACTORY_ADDRESS,
+  LEGACY_FACTORY_ADDRESS_2,
   LEGACY_JEONSE_FACTORY_ADDRESS,
   LEGACY_JEONSE_FACTORY_ADDRESS_2,
   LEGACY_JEONSE_FACTORY_ADDRESS_3,
+  LEGACY_JEONSE_FACTORY_ADDRESS_4,
   MOCKKRW_ADDRESS,
   bridgePoolAbi,
   earnAbi,
@@ -45,6 +47,8 @@ export default function Dashboard() {
       { address: EARN_ADDRESS, abi: earnAbi, functionName: "totalAssets" },
       { address: LEGACY_JEONSE_FACTORY_ADDRESS_2, abi: jeonseFactoryAbi, functionName: "getAll" },
       { address: LEGACY_JEONSE_FACTORY_ADDRESS_3, abi: jeonseFactoryAbi, functionName: "getAll" },
+      { address: LEGACY_JEONSE_FACTORY_ADDRESS_4, abi: jeonseFactoryAbi, functionName: "getAll" },
+      { address: LEGACY_FACTORY_ADDRESS_2, abi: factoryAbi, functionName: "getAll" },
     ],
     query: { refetchInterval: 6000 },
   });
@@ -61,12 +65,14 @@ export default function Dashboard() {
     ...(((stats?.[1]?.result as `0x${string}`[]) ?? []) as `0x${string}`[]),
     ...(((stats?.[8]?.result as `0x${string}`[]) ?? []) as `0x${string}`[]),
     ...(((stats?.[9]?.result as `0x${string}`[]) ?? []) as `0x${string}`[]),
+    ...(((stats?.[10]?.result as `0x${string}`[]) ?? []) as `0x${string}`[]),
     ...(((stats?.[0]?.result as `0x${string}`[]) ?? []) as `0x${string}`[]),
   ];
   const escrowCount = escrows.length;
   const circleCount =
     ((stats?.[2]?.result as unknown[] | undefined)?.length ?? 0) +
-    ((stats?.[3]?.result as unknown[] | undefined)?.length ?? 0);
+    ((stats?.[3]?.result as unknown[] | undefined)?.length ?? 0) +
+    ((stats?.[11]?.result as unknown[] | undefined)?.length ?? 0);
   const earnApy = rayToApy((stats?.[6]?.result as bigint | undefined) ?? 0n);
   const earnSupplied = (stats?.[7]?.result as bigint | undefined) ?? 0n;
   const myBalance = (balance as bigint | undefined) ?? 0n;

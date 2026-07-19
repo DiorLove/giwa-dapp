@@ -5,6 +5,7 @@ import { ArrowUpRight, Plus, Lock } from "lucide-react";
 import {
   FACTORY_ADDRESS,
   LEGACY_FACTORY_ADDRESS,
+  LEGACY_FACTORY_ADDRESS_2,
   MOCKKRW_ADDRESS,
   factoryAbi,
   mockKrwAbi,
@@ -44,8 +45,14 @@ export default function AppHome() {
     abi: factoryAbi,
     functionName: "getAll",
   });
+  const { data: legacy2 } = useReadContract({
+    address: LEGACY_FACTORY_ADDRESS_2,
+    abi: factoryAbi,
+    functionName: "getAll",
+  });
   const mulles = [
     ...((legacy ?? []) as `0x${string}`[]),
+    ...((legacy2 ?? []) as `0x${string}`[]),
     ...((all ?? []) as `0x${string}`[]),
   ];
 
