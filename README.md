@@ -23,6 +23,10 @@
 
 [데모](https://ieum-protocol.vercel.app) · [익스플로러](https://sepolia-explorer.giwa.io) · [배포 주소](#-배포-주소--giwa-sepolia) · [보안](#-보안--audit-ready)
 
+<br/>
+
+**🇰🇷 한국어**  ·  [🇬🇧 English](README.en.md)
+
 </div>
 
 ---
